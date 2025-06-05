@@ -1,0 +1,92 @@
+/* TrustMe Password Manager Content Script Styles */
+
+/* Hervorhebung für gefundene Eingabefelder */
+.trustme-highlight {
+  position: relative;
+  box-shadow: 0 0 0 2px #4CAF50 !important;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Tooltip für Autofill-Status */
+.trustme-tooltip {
+  position: absolute;
+  background-color: #4CAF50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.trustme-highlight:hover .trustme-tooltip {
+  opacity: 1;
+}
+
+/* Animation für Autofill-Aktion */
+@keyframes trustme-autofill {
+  0% {
+    background-color: rgba(76, 175, 80, 0.1);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.trustme-autofilled {
+  animation: trustme-autofill 1s ease;
+}
+
+/* Stil für den Autofill-Button */
+.trustme-autofill-button {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.trustme-highlight:hover .trustme-autofill-button {
+  opacity: 1;
+}
+
+.trustme-autofill-button:hover {
+  background-color: #45a049;
+}
+
+/* Fehlerzustand */
+.trustme-error {
+  box-shadow: 0 0 0 2px #f44336 !important;
+}
+
+.trustme-error .trustme-tooltip {
+  background-color: #f44336;
+}
+
+/* Erfolgszustand */
+.trustme-success {
+  box-shadow: 0 0 0 2px #4CAF50 !important;
+}
+
+.trustme-success .trustme-tooltip {
+  background-color: #4CAF50;
+}
+
+/* Warnzustand */
+.trustme-warning {
+  box-shadow: 0 0 0 2px #ff9800 !important;
+}
+
+.trustme-warning .trustme-tooltip {
+  background-color: #ff9800;
+} 

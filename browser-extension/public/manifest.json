@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Dein Passwort-Manager",
+  "version": "1.0",
+  "description": "Dein sicherer Passwort-Manager.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background-scripts/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-scripts/autofill.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+    // Achtung: Berechtigungen auf das Nötigste beschränken!
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*", // Lokales Backend
+    "https://dein-backend-url.com/*" // Später AWS Backend
+  ]
+} 

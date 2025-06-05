@@ -10,29 +10,29 @@ Das Projekt TrustMe ist in aktiver Entwicklung! Wir bauen Schritt für Schritt e
 
 ### Backend (FastAPI) 🐍
 
-*   Basisstruktur steht. ✅
-*   User-Authentifizierung (Registrierung, Login) ist implementiert. 🔐
-*   CRUD-Operationen für deine Passwörter sind vorhanden. ✍️
-*   Die Endpunkte für die Zwei-Faktor-Authentifizierung (2FA) sind integriert. 📱
+* Basisstruktur steht. ✅
+* User-Authentifizierung (Registrierung, Login) ist implementiert. 🔐
+* CRUD-Operationen für deine Passwörter sind vorhanden. ✍️
+* Die Endpunkte für die Zwei-Faktor-Authentifizierung (2FA) sind integriert. 📱
 
 ### Frontend (React mit Vite, Material UI) ⚛️
 
-*   Das Projekt wurde schnell mit Vite eingerichtet und konfiguriert. ⚡
-*   Grundlegendes Routing für die wichtigsten Seiten (Login, Registrierung, Dashboard) ist fertig. 🛣️
-*   Ein API-Service für die Kommunikation mit dem Backend wurde erstellt. 🔗
-*   Wichtige client-seitige Krypto-Funktionen sind implementiert. 🔑
-*   Wir arbeiten gerade an den Login-, Registrierungs- und 2FA-Seiten. 🚧
-*   Ein schickes Material Design (MUI) mit Light/Dark-Modus ist eingerichtet. 🎨
+* Das Projekt wurde schnell mit Vite eingerichtet und konfiguriert. ⚡
+* Grundlegendes Routing für die wichtigsten Seiten (Login, Registrierung, Dashboard) ist fertig. 🛣️
+* Ein API-Service für die Kommunikation mit dem Backend wurde erstellt. 🔗
+* Wichtige client-seitige Krypto-Funktionen sind implementiert. 🔑
+* Wir arbeiten gerade an den Login-, Registrierungs- und 2FA-Seiten. 🚧
+* Ein schickes Material Design (MUI) mit Light/Dark-Modus ist eingerichtet. 🎨
 
 ### Browser-Erweiterung (React) 🦊🔑
 
-*   Die grundlegende Struktur für Popup, Background- und Content-Skripte steht. 🏗️
+* Die grundlegende Struktur für Popup, Background- und Content-Skripte steht. 🏗️
 
 ### Infrastruktur & Deployment ☁️🐳
 
-*   `docker-compose.yml` ist für die lokale Entwicklung vorbereitet. ⚙️
-*   Dockerfiles für Backend und Frontend sind erstellt/aktualisiert. 🚢
-*   CI/CD-Pipelines mit GitHub Actions sind in Vorbereitung. 🚀
+* `docker-compose.yml` ist für die lokale Entwicklung vorbereitet. ⚙️
+* Dockerfiles für Backend und Frontend sind erstellt/aktualisiert. 🚢
+* CI/CD-Pipelines mit GitHub Actions sind in Vorbereitung. 🚀
 
 ## Projektstruktur 📁
 
@@ -83,12 +83,12 @@ TrustMe/
 
 Unsere Reise mit TrustMe geht weiter! Hier sind die nächsten wichtigen Schritte und geplanten Features: 🗺️➡️
 
-*   Komplette Integration der Zwei-Faktor-Authentifizierung im Frontend und Backend. ✅🔄📱
-*   Fertigstellung des Frontend-Dashboards zur vollen Verwaltung deiner Passwörter. 📊🔑
-*   Implementierung der smarten Logik für die Browser-Erweiterung (Auto-Ausfüllen, einfaches Speichern). 🤖💾
-*   Finalisierung der CI/CD-Workflows für reibungsloses Bauen und Deployment. 🏗️✅🚀
-*   Vorbereitung und Durchführung des Deployments auf AWS. ☁️🚀
-*   Hinzufügen weiterer nützlicher Features und Sicherheitsverbesserungen (z.B. Passwortstärke-Check, sicheres Teilen). ✨🛡️
-*   Umfassende Testabdeckung für Stabilität und Sicherheit. 🧪🔒
+* Komplette Integration der Zwei-Faktor-Authentifizierung im Frontend und Backend. ✅🔄📱
+* Fertigstellung des Frontend-Dashboards zur vollen Verwaltung deiner Passwörter. 📊🔑
+* Implementierung der smarten Logik für die Browser-Erweiterung (Auto-Ausfüllen, einfaches Speichern). 🤖💾
+* Finalisierung der CI/CD-Workflows für reibungsloses Bauen und Deployment. 🏗️✅🚀
+* Vorbereitung und Durchführung des Deployments auf AWS. ☁️🚀
+* Hinzufügen weiterer nützlicher Features und Sicherheitsverbesserungen (z.B. Passwortstärke-Check, sicheres Teilen). ✨🛡️
+* Umfassende Testabdeckung für Stabilität und Sicherheit. 🧪🔒
 
 Bleib dran für weitere Updates! ✨

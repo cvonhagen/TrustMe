@@ -29,10 +29,9 @@
     "activeTab",
     "storage",
     "scripting"
-    // Achtung: Berechtigungen auf das Nötigste beschränken!
   ],
   "host_permissions": [
-    "http://localhost:8000/*", // Lokales Backend
-    "https://dein-backend-url.com/*" // Später AWS Backend
+    "http://localhost:8000/*",
+    "https://dein-backend-url.com/*"
   ]
 } 

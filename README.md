@@ -1,44 +1,48 @@
-# TrustMe Passwort Manager
+# TrustMe Passwort Manager ✨
 
-Dies ist eine sichere Passwort-Manager-Anwendung mit einem Web-Frontend, einer Browser-Erweiterung und einem Python-Backend. Das Projekt zielt darauf ab, eine robuste Lösung für die Verwaltung sensibler Anmeldedaten zu bieten, mit Fokus auf Sicherheit, Benutzerfreundlichkeit und moderne Technologie-Stacks.
+Willkommen bei TrustMe! 👋 Dies ist mehr als nur ein Passwort-Manager – es ist eine robuste und sichere Lösung, die dir hilft, deine digitalen Anmeldedaten mühelos zu verwalten. Mit einem modernen Web-Frontend, einer praktischen Browser-Erweiterung und einem leistungsstarken Python-Backend konzentriert sich TrustMe auf Sicherheit, Benutzerfreundlichkeit und den Einsatz moderner Technologien.
 
-## Aktueller Stand
+Unser Ziel ist es, dir ein sicheres Gefühl im Internet zu geben, indem wir den Schutz deiner Passwörter vereinfachen. 🔒
 
-Das Projekt befindet sich in aktiver Entwicklung. Die grundlegenden Strukturen für das Backend und das Frontend sind eingerichtet, und die Kernfunktionalitäten werden implementiert.
+## Aktueller Entwicklungsstand 🏗️
 
-### Backend (FastAPI)
+Das Projekt TrustMe ist in aktiver Entwicklung! Wir bauen Schritt für Schritt eine solide Anwendung auf. Hier ist, wo wir gerade stehen:
 
-*   Grundlegende Struktur eingerichtet.
-*   Authentifizierung (Registrierung, Login) implementiert.
-*   CRUD-Operationen für Benutzer und Passwörter implementiert.
-*   Vorbereitungen und Endpunkte für die Zwei-Faktor-Authentifizierung (2FA) sind implementiert.
+### Backend (FastAPI) 🐍
 
-### Frontend (React mit Vite, Material UI)
+*   Basisstruktur steht. ✅
+*   User-Authentifizierung (Registrierung, Login) ist implementiert. 🔐
+*   CRUD-Operationen für deine Passwörter sind vorhanden. ✍️
+*   Die Endpunkte für die Zwei-Faktor-Authentifizierung (2FA) sind integriert. 📱
 
-*   Projekt mit Vite erstellt und konfiguriert.
-*   Grundlegendes Routing für Login, Registrierung und Dashboard eingerichtet.
-*   API-Service zur Kommunikation mit dem Backend erstellt.
-*   Client-seitige Verschlüsselungsfunktionen (Schlüsselableitung, Entschlüsselung) implementiert.
-*   Login-, Registrierungs- und 2FA-Seiten sind in Arbeit.
-*   Material Design (MUI) mit Light/Dark-Modus eingerichtet.
+### Frontend (React mit Vite, Material UI) ⚛️
 
-### Browser-Erweiterung (React)
+*   Das Projekt wurde schnell mit Vite eingerichtet und konfiguriert. ⚡
+*   Grundlegendes Routing für die wichtigsten Seiten (Login, Registrierung, Dashboard) ist fertig. 🛣️
+*   Ein API-Service für die Kommunikation mit dem Backend wurde erstellt. 🔗
+*   Wichtige client-seitige Krypto-Funktionen sind implementiert. 🔑
+*   Wir arbeiten gerade an den Login-, Registrierungs- und 2FA-Seiten. 🚧
+*   Ein schickes Material Design (MUI) mit Light/Dark-Modus ist eingerichtet. 🎨
 
-*   Grundlegende Projektstruktur für Popup, Background-Script und Content-Script erstellt.
+### Browser-Erweiterung (React) 🦊🔑
 
-### Infrastruktur & Deployment
+*   Die grundlegende Struktur für Popup, Background- und Content-Skripte steht. 🏗️
 
-*   `docker-compose.yml` für die lokale Entwicklung von Backend und Frontend vorbereitet.
-*   Dockerfiles für Backend und Frontend erstellt/aktualisiert.
-*   GitHub Actions Workflows für CI/CD sind in Vorbereitung.
+### Infrastruktur & Deployment ☁️🐳
 
-## Verzeichnisstruktur
+*   `docker-compose.yml` ist für die lokale Entwicklung vorbereitet. ⚙️
+*   Dockerfiles für Backend und Frontend sind erstellt/aktualisiert. 🚢
+*   CI/CD-Pipelines mit GitHub Actions sind in Vorbereitung. 🚀
+
+## Projektstruktur 📁
+
+Hier ist ein Überblick über den Aufbau des Projekts:
 
 ```
 TrustMe/
-├── .github/           # GitHub Actions Workflows
+├── .github/           # GitHub Actions Workflows 🛠️
 │   └── workflows/
-├── backend/           # FastAPI Backend
+├── backend/           # FastAPI Backend 🐍
 │   ├── app/
 │   │   ├── api/
 │   │   │   └── v1/
@@ -47,42 +51,44 @@ TrustMe/
 │   │   ├── crud/
 │   │   ├── models/
 │   │   └── schemas/
-│   ├── core/          # Kernkonfiguration und -funktionen
-│   ├── db/            # Datenbank-bezogene Dateien (Migrationen etc.)
-│   ├── scripts/       # Skripte für Setup und Verwaltung
-│   ├── .env.example   # Beispiel-Umgebungsdateien
+│   ├── core/
+│   ├── db/
+│   ├── scripts/
+│   ├── .env.example   # Beispiel-Umgebungsdateien 📝
 │   ├── Dockerfile
 │   └── requirements.txt
-├── browser-extension/ # Browser-Erweiterung
-│   ├── public/        # Manifest und statische Assets
-│   ├── src/           # Erweiterungs-Code (Popup, Background, Content)
-│   │   └── api/       # API-Service für die Erweiterung
-│   ├── .env.example   # Beispiel-Umgebungsdateien
+├── browser-extension/ # Browser-Erweiterung 🦊🔑
+│   ├── public/
+│   ├── src/
+│   │   └── api/
+│   ├── .env.example   # Beispiel-Umgebungsdateien 📝
 │   └── package.json
-├── frontend/          # React Web-Frontend
-│   ├── public/        # Statische Assets
-│   ├── src/           # Frontend-Code
+├── frontend/          # React Web-Frontend ⚛️
+│   ├── public/
+│   ├── src/
 │   │   ├── components/
 │   │   ├── pages/
-│   │   ├── services/  # API-Service
-│   │   └── utils/     # Hilfsfunktionen (Krypto)
-│   ├── .env.example   # Beispiel-Umgebungsdateien
+│   │   ├── services/
+│   │   └── utils/
+│   ├── .env.example   # Beispiel-Umgebungsdateien 📝
 │   ├── Dockerfile
 │   ├── package.json
-│   └── nginx.conf     # Nginx Konfiguration für SPA
-├── docker-compose.yml # Docker Compose Datei
-├── .gitignore
-└── README.md
+│   └── nginx.conf
+├── docker-compose.yml # Docker Compose Datei 🐳
+├── .gitignore         # Ignorierte Dateien 🙈
+└── README.md          # Diese Datei! 😉
 ```
 
-## Zukünftige Pläne
+## Was als Nächstes kommt roadmap
 
-Folgende Schritte sind als Nächstes geplant oder noch offen:
+Unsere Reise mit TrustMe geht weiter! Hier sind die nächsten wichtigen Schritte und geplanten Features: 🗺️➡️
 
-*   Vollständige Implementierung und Integration der Zwei-Faktor-Authentifizierung im Frontend und Backend.
-*   Fertigstellung der Frontend-Dashboard-Seite (Anzeige und Verwaltung von Passwörtern).
-*   Implementierung der vollständigen Logik für die Browser-Erweiterung (Auto-Ausfüllen, Speichern von Passwörtern).
-*   Fertigstellung der CI/CD-Pipelines mit GitHub Actions für das automatische Bauen und Testen.
-*   Vorbereitung und Durchführung des Deployments auf AWS (z.B. ECS für Container, RDS für die Datenbank).
-*   Hinzufügen weiterer Sicherheits- und Komfortfunktionen (z.B. Passwortstärke-Prüfung, Sicheres Teilen von Passwörtern).
-*   Umfassende Tests (Unit-, Integrations- und Sicherheitstests).
+*   Komplette Integration der Zwei-Faktor-Authentifizierung im Frontend und Backend. ✅🔄📱
+*   Fertigstellung des Frontend-Dashboards zur vollen Verwaltung deiner Passwörter. 📊🔑
+*   Implementierung der smarten Logik für die Browser-Erweiterung (Auto-Ausfüllen, einfaches Speichern). 🤖💾
+*   Finalisierung der CI/CD-Workflows für reibungsloses Bauen und Deployment. 🏗️✅🚀
+*   Vorbereitung und Durchführung des Deployments auf AWS. ☁️🚀
+*   Hinzufügen weiterer nützlicher Features und Sicherheitsverbesserungen (z.B. Passwortstärke-Check, sicheres Teilen). ✨🛡️
+*   Umfassende Testabdeckung für Stabilität und Sicherheit. 🧪🔒
+
+Bleib dran für weitere Updates! ✨

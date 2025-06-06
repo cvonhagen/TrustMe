@@ -1,17 +1,21 @@
-FROM python:3.11-slim
+FROM golang:1.24.4-alpine AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 
-EXPOSE 8000
+RUN go build -o main .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main .
+COPY .env .
+
+EXPOSE 3000
+
+CMD ["./main"] 

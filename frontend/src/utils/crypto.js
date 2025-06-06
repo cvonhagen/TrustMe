@@ -1,30 +1,53 @@
 import CryptoJS from 'crypto-js';
+// import 'crypto-js/lib-typedarrays'; // Might be needed for WordArray - No longer needed with Web Crypto API
+// import 'crypto-js/scrypt'; // Corrected Explicit import for Scrypt - No longer needed
+// import argon2 from 'argon2-browser'; // Import the argon2-browser library - Removing this
+// import loadArgon2idWasm from 'argon2id'; // Import the argon2id library - Removing this
 
-// Funktion zur Ableitung eines Schlüssels aus dem Master-Passwort und Salt
-// Muss dieselben Parameter (Salt, N, r, p) verwenden wie das Backend Scrypt KDF
+// Funktion zur Ableitung eines Schlüssels aus dem Master-Passwort und Salt unter Verwendung der Web Crypto API (PBKDF2)
+// Muss dieselben Parameter (Salt, Iterationen, Schlüssellänge, Hash) verwenden wie das Backend
 // Hinweis: Das Salt muss vom Backend beim Login/Registrierung bereitgestellt werden.
-export const deriveKeyFromPassword = (password, saltBase64) => {
+export const deriveKeyFromPassword = async (password, saltBase64) => {
   try {
-    // Convert base64 salt to WordArray
-    const salt = CryptoJS.enc.Base64.parse(saltBase64);
+    // Convert base64 salt to ArrayBuffer
+    const saltBuffer = Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0));
 
-    // Scrypt parameters (should match backend - example values)
-    const N = 2**14; // iteration count
-    const r = 8;     // block size
-    const p = 1;     // parallelism factor
-    const keyLength = 256 / 8; // 32 bytes for AES-256
+    // PBKDF2 parameters (should match backend - values from backend/security/security.go)
+    const iterations = 250000; // pbkdf2Iterations
+    const keyLength = 32; // pbkdf2KeyLen in bytes (for AES-256)
+    // Hash algorithm should also match backend
+    const hashAlgorithm = 'SHA-256';
 
-    const derivedKey = CryptoJS.kdf.scrypt(
-      password,
-      salt,
-      {
-        N: N,
-        r: r,
-        p: p,
-        keySize: keyLength / 4 // keySize is in 32-bit words
-      }
+    // Import the password as key material
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(password),
+      'PBKDF2',
+      false, // Not extractable
+      ['deriveBits', 'deriveKey']
     );
-    return derivedKey;
+
+    // Derive the key using PBKDF2
+    const derivedKeyBuffer = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt: saltBuffer,
+        iterations: iterations,
+        hash: hashAlgorithm,
+      },
+      keyMaterial,
+      keyLength * 8 // keyLength in bits
+    );
+
+    // Convert the ArrayBuffer to a Uint8Array
+    const derivedKeyBytes = new Uint8Array(derivedKeyBuffer);
+
+    // Convert the Uint8Array to a WordArray (CryptoJS format) for compatibility with existing AES-GCM functions
+    // Note: Ideally, we would also migrate AES-GCM to Web Crypto API or another library
+    const derivedKeyWordArray = CryptoJS.lib.WordArray.create(derivedKeyBytes);
+
+    return derivedKeyWordArray;
+
   } catch (error) {
     console.error("Error deriving key:", error);
     throw new Error("Failed to derive encryption key.");
@@ -46,16 +69,19 @@ export const decryptData = (encryptedTextBase64, ivBase64, tagBase64, key) => {
       ciphertext.sigBytes + tag.sigBytes
     );
 
+    // Create CipherParams object
+    const cipherParams = CryptoJS.lib.CipherParams.create({
+      ciphertext: ciphertextWithTag,
+      iv: iv // Include IV in CipherParams as well
+      // salt might also be needed here if used during encryption
+    });
+
     const decrypted = CryptoJS.AES.decrypt(
-      {
-        ciphertext: ciphertextWithTag
-      },
+      cipherParams,
       key,
       {
-        iv: iv,
         mode: CryptoJS.mode.GCM,
         padding: CryptoJS.pad.NoPadding
-        // GCM requires the tag to be appended to the ciphertext for decryption in this library
         // The authentication check is implicitly done by the decrypt function in GCM mode
       }
     );

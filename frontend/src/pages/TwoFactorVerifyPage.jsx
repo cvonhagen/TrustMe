@@ -1,97 +1,75 @@
-import React, { useState } from 'react';
-import { Container, Typography, Box, TextField, Button, Alert, Paper } from '@mui/material';
-import { verifyTwoFactorLogin } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { Container, Typography, Box, Button, TextField, Paper, Alert } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { verifyTwoFactorLogin } from '../services/api';
 import { useAuth } from '../AuthContext';
 
-function TwoFactorVerifyPage() {
+const TwoFactorVerifyPage = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { login: authLogin, isAuthenticated } = useAuth();
 
-  // Get username from AuthContext user object
-  const username = user?.username;
+  const usernameToVerify = location.state?.username;
 
-  const handleCodeChange = (event) => {
-    setCode(event.target.value);
-  };
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else if (!usernameToVerify) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, usernameToVerify, navigate]);
+
+  if (isAuthenticated || !usernameToVerify) {
+    return null;
+  }
 
   const handleVerify = async () => {
-    if (!username) {
-      setError('Benutzerinformationen nicht verfügbar. Bitte melden Sie sich erneut an.');
-      // Consider redirecting to login if user is null
-      return;
-    }
-
-    if (!code) {
-        setError('Bitte geben Sie den Verifizierungscode ein.');
-        return;
-    }
-
     setError(null);
     try {
-      // Call the backend endpoint to verify the 2FA code during login
-      await verifyTwoFactorLogin({ username, code });
-
-      // If verification is successful, navigate to the dashboard
-      navigate('/dashboard');
-
+      const response = await verifyTwoFactorLogin({ username: usernameToVerify, code });
+      
+      const { token, salt } = response.data; 
+      
+      if (token && salt) {
+        authLogin(usernameToVerify, null, salt, token);
+        navigate('/dashboard');
+      } else {
+         setError("Verifizierung fehlgeschlagen. Ungültige Antwort vom Server.");
+      }
     } catch (err) {
-      console.error("2FA verification failed:", err.response?.data || err.message);
-      setError(err.response?.data?.detail || '2FA-Verifizierung fehlgeschlagen. Bitte überprüfen Sie den Code.');
+      console.error("2FA Verification failed:", err.response?.data || err.message);
+      setError(err.response?.data?.error || "2FA Verifizierung fehlgeschlagen.");
     }
   };
 
-  // Optional: Redirect to login if no user information is available
-  // useEffect(() => {
-  //   if (!username) {
-  //     navigate('/login');
-  //   }
-  // }, [username, navigate]);
-
-
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography component="h1" variant="h5" align="center" gutterBottom>
-          2-Faktor-Verifizierung
+    <Container maxWidth="sm">
+      <Box sx={{ my: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          2FA Code verifizieren
         </Typography>
-        <Typography variant="body1" paragraph>
-          Bitte geben Sie den Code aus Ihrer Authenticator-App ein.
-        </Typography>
+        <Paper elevation={2} sx={{ p: 3 }}>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <TextField
-          margin="normal"
-          required
-          fullWidth
-          id="code"
-          label="Verifizierungscode"
-          name="code"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={handleCodeChange}
-        />
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Button
-          type="button"
-          fullWidth
-          variant="contained"
-          sx={{ mt: 3, mb: 2 }}
-          onClick={handleVerify}
-        >
-          Code verifizieren
-        </Button>
-      </Paper>
+          <Typography variant="body1" gutterBottom>
+            Geben Sie den Code aus Ihrer Authenticator-App für Benutzer <strong>{usernameToVerify}</strong> ein.
+          </Typography>
+          <TextField
+            label="Verifizierungscode"
+            fullWidth
+            margin="normal"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <Button variant="contained" color="primary" onClick={handleVerify} sx={{ mt: 2 }}>
+            Code verifizieren
+          </Button>
+        </Paper>
+      </Box>
     </Container>
   );
-}
+};
 
 export default TwoFactorVerifyPage; 

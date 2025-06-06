@@ -17,23 +17,25 @@ function LoginPage() {
     event.preventDefault();
     setError('');
     try {
-      const response = await loginUser({ username, password });
+      const response = await loginUser({ username, master_password: password });
       
-      const { access_token, salt, two_factor_enabled } = response.data;
+      const { token, salt, two_fa_enabled } = response.data;
 
-      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('access_token', token);
 
       await authLogin(username, password, salt);
 
-      if (two_factor_enabled) {
-        navigate('/two-factor-verify');
+      setPassword('');
+
+      if (two_fa_enabled) {
+        navigate('/two-factor-verify', { state: { username: username } });
       } else {
         navigate('/dashboard');
       }
 
     } catch (error) {
       console.error("Login failed:", error.response?.data || error.message);
-      setError(error.response?.data?.detail || 'Login fehlgeschlagen. Bitte überprüfen Sie Benutzername und Master-Passwort.');
+      setError(error.response?.data?.error || 'Login fehlgeschlagen. Bitte überprüfen Sie Benutzername und Master-Passwort.');
     }
   };
 

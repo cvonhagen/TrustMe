@@ -14,14 +14,23 @@ const api = axios.create({
 // Function to get JWT token (stored securely in extension storage)
 const getAuthToken = async () => {
   // Implement logic to get token from chrome.storage.local
-  return new Promise((resolve) => {
-    if (chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['access_token'], (result) => {
-        resolve(result.access_token);
+  return new Promise((resolve, reject) => {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['token'], (result) => {
+        // Note: The Go backend returns 'token', not 'access_token'
+        resolve(result.token);
       });
     } else {
       // Not running in extension context, might use localStorage for development
-      resolve(localStorage.getItem('access_token'));
+      // Or reject if token is essential and not available
+      const token = localStorage.getItem('token'); // Use 'token' for consistency with backend
+      if (token) {
+        resolve(token);
+      } else {
+        // In a real extension, you might want to redirect to login or handle this differently
+        console.warn("Auth token not found in localStorage. Not in extension context?");
+        resolve(null); // Resolve with null if no token found
+      }
     }
   });
 };
@@ -48,7 +57,9 @@ export const loginUserExtension = (credentials) => api.post('/auth/login', crede
 // Passwords
 export const getPasswordsExtension = () => api.get('/passwords');
 export const getPasswordByIdExtension = (passwordId) => api.get(`/passwords/${passwordId}`);
-// Add other password related API calls as needed for the extension (create, update, delete - maybe limited functionality in extension?)
+export const createPasswordExtension = (passwordData) => api.post('/passwords', passwordData);
+export const updatePasswordExtension = (passwordId, passwordData) => api.put(`/passwords/${passwordId}`, passwordData);
+export const deletePasswordExtension = (passwordId) => api.delete(`/passwords/${passwordId}`);
 
 // Two-Factor Authentication (placeholders)
 // export const verify2FAExtension = (codeData) => api.post('/auth/2fa/verify', codeData);

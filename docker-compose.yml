@@ -1,43 +1,42 @@
+version: '3.8'
+
 services:
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     ports:
-      - "8000:8000"
+      - "8000:3000"
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend:/app
-      - /app/__pycache__
-    networks:
-      - trustme-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     ports:
       - "3000:80"
-    env_file:
-      - ./frontend/.env
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+    env_file:
+      - ./frontend/.env
     depends_on:
       - backend
-    networks:
-      - trustme-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
+  # browser-extension:
+  #   build: ./browser-extension
+  #   volumes:
+  #     - ./browser-extension:/app
+  #     - /app/node_modules # Anonymes Volume für node_modules
+  #   # Keine Ports oder depends_on, da dies keine laufende Service ist, sondern nur zum Bauen verwendet wird
+
+  # db: # Nicht verwendet, da wir Neon.tech verwenden
+  #   image: postgres:13
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data/
+  #   env_file:
+  #     - ./backend/.env # Verwende die gleiche .env für DB-Variablen
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data: # Nicht verwendet
 
 networks:
   trustme-network:

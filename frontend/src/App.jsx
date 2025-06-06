@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 // Import placeholder page components
 import LoginPage from './pages/LoginPage';
@@ -10,16 +12,25 @@ import TwoFactorVerifyPage from './pages/TwoFactorVerifyPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/two-factor-verify" element={<TwoFactorVerifyPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/two-factor-setup" element={<TwoFactorSetupPage />} />
-      </Route>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/dashboard"
+        element={isAuthenticated ? <DashboardPage /> : <LoginPage />}
+      />
+      <Route
+        path="/setup-2fa"
+        element={isAuthenticated ? <TwoFactorSetupPage /> : <LoginPage />}
+      />
+      <Route
+        path="/verify-2fa"
+        element={isAuthenticated ? <TwoFactorVerifyPage /> : <LoginPage />}
+      />
+      <Route path="*" element={<LoginPage />} />
     </Routes>
   );
 }

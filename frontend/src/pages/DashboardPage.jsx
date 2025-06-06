@@ -1,274 +1,375 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Alert, Paper, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { getPasswords, addPassword, updatePassword, deletePassword } from '../services/api';
+import React, { useState, useEffect, useContext } from 'react';
+import { Container, Typography, List, ListItem, ListItemText, Paper, Box, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Alert } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { getPasswords, createPassword, updatePassword, deletePassword } from '../services/api';
 import { decryptData, encryptData } from '../utils/crypto';
 import { useAuth } from '../AuthContext';
 
-function DashboardPage() {
+const DashboardPage = () => {
   const [passwords, setPasswords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [currentPassword, setCurrentPassword] = useState(null);
+
+  const [openFormDialog, setOpenFormDialog] = useState(false);
   const [formData, setFormData] = useState({
     website_url: '',
     username: '',
     password: '',
     notes: '',
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  // State for Delete Confirmation Dialog
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [passwordToDelete, setPasswordToDelete] = useState(null);
 
   const { encryptionKey } = useAuth();
 
-  useEffect(() => {
-    const fetchPasswords = async () => {
-      if (!encryptionKey) {
-        setError('Verschlüsselungsschlüssel nicht verfügbar. Bitte melden Sie sich erneut an.');
-        setLoading(false);
-        return;
-      }
+  // Function to fetch and decrypt passwords
+  const fetchAndDecryptPasswords = async () => {
+    if (!encryptionKey) {
+      setError("Encryption key not available. Please log in again.");
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const response = await getPasswords();
-        const encryptedPasswords = response.data;
+    setLoading(true);
+    setError(null);
 
-        const decryptedPasswords = encryptedPasswords.map(p => {
-          try {
-            const decryptedUsername = decryptData(p.encrypted_username, encryptionKey);
-            const decryptedPassword = decryptData(p.encrypted_password, encryptionKey);
-            const decryptedNotes = p.encrypted_notes ? decryptData(p.encrypted_notes, encryptionKey) : '';
-            return {
-              ...p,
-              decryptedUsername,
-              decryptedPassword,
-              decryptedNotes,
-            };
-          } catch (decryptError) {
-            console.error(`Failed to decrypt password ID ${p.id}: `, decryptError);
-            return { ...p, decryptedUsername: 'Decryption Failed', decryptedPassword: 'Decryption Failed', decryptedNotes: 'Decryption Failed' };
-          }
-        });
+    try {
+      const response = await getPasswords();
+      const encryptedPasswords = response.data;
 
-        setPasswords(decryptedPasswords);
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to fetch passwords:", err);
-        setError('Passwörter konnten nicht geladen werden.');
-        setLoading(false);
-      }
-    };
+      const decryptedPasswords = encryptedPasswords.map(pw => {
+        try {
+          const decryptedUsername = decryptData(pw.encrypted_username, pw.username_iv, pw.username_tag, encryptionKey);
+          const decryptedPassword = decryptData(pw.encrypted_password, pw.password_iv, pw.password_tag, encryptionKey);
+          const decryptedNotes = pw.encrypted_notes ? decryptData(pw.encrypted_notes, pw.notes_iv, pw.notes_tag, encryptionKey) : '';
+          
+          return {
+            ...pw,
+            username: decryptedUsername,
+            password: decryptedPassword,
+            notes: decryptedNotes
+          };
+        } catch (decryptError) {
+          console.error("Error decrypting password:", decryptError);
+          return { 
+            ...pw, 
+            website_url: pw.website_url + " [Decryption Error]",
+            username: "[Decryption Error]", 
+            password: "[Decryption Error]", 
+            notes: "[Decryption Error]"
+          };
+        }
+      });
 
-    fetchPasswords();
-  }, [encryptionKey]);
-
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleAddPassword = () => {
-    setCurrentPassword(null);
-    setFormData({ website_url: '', username: '', password: '', notes: '' });
-    setOpenDialog(true);
-  };
-
-  const handleEditPassword = (password) => {
-    setCurrentPassword(password);
-    setFormData({
-      website_url: password.website_url,
-      username: password.decryptedUsername,
-      password: password.decryptedPassword,
-      notes: password.decryptedNotes,
-    });
-    setOpenDialog(true);
-  };
-
-  const handleDeletePassword = async (passwordId) => {
-    if (window.confirm('Sind Sie sicher, dass Sie dieses Passwort löschen möchten?')) {
-      try {
-        await deletePassword(passwordId);
-        setPasswords(passwords.filter(p => p.id !== passwordId));
-        console.log(`Password with ID ${passwordId} deleted.`);
-      } catch (err) {
-        console.error("Failed to delete password:", err);
-        setError('Passwort konnte nicht gelöscht werden.');
-      }
+      setPasswords(decryptedPasswords);
+    } catch (err) {
+      console.error("Failed to fetch passwords:", err.response?.data || err.message);
+      setError(err.response?.data?.error || "Failed to load passwords.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Fetch passwords on component mount or when encryptionKey changes
+  useEffect(() => {
+    fetchAndDecryptPasswords();
+  }, [encryptionKey]); // Refetch if encryptionKey changes
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handlePasswordClick = (password) => {
+    setCurrentPassword(password);
+    setOpenDetailDialog(true);
+  };
+
+  const handleCloseDetailDialog = () => {
+    setOpenDetailDialog(false);
+    setCurrentPassword(null);
+  };
+
+  const handleAddPassword = () => {
+    setFormData({
+      website_url: '',
+      username: '',
+      password: '',
+      notes: '',
+    });
+    setIsEditing(false);
+    setFormError(null);
+    setOpenFormDialog(true);
+  };
+
+  const handleEditPassword = (password) => {
+    setFormData({
+      website_url: password.website_url,
+      username: password.username,
+      password: password.password,
+      notes: password.notes || '',
+    });
+    setCurrentPassword(password); // Keep track of the original password for ID
+    setIsEditing(true);
+    setFormError(null);
+    setOpenDetailDialog(false); // Close detail dialog
+    setOpenFormDialog(true);
+  };
+
+  const handleCloseFormDialog = () => {
+    setOpenFormDialog(false);
+    setFormData({
+      website_url: '',
+      username: '',
+      password: '',
+      notes: '',
+    });
+    setCurrentPassword(null); // Clear current password context
+    setIsEditing(false);
+    setFormError(null);
+  };
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      [name]: value
+    }));
+  };
+
+  // Save Password logic (Add or Edit)
   const handleSavePassword = async () => {
+    setFormError(null);
     if (!encryptionKey) {
-      setError('Verschlüsselungsschlüssel nicht verfügbar. Bitte melden Sie sich erneut an, um Passwörter zu speichern.');
+      setFormError("Encryption key not available. Cannot save password.");
       return;
     }
 
     try {
-      const encryptedUsername = encryptData(formData.username, encryptionKey);
-      const encryptedPassword = encryptData(formData.password, encryptionKey);
-      const encryptedNotes = formData.notes ? encryptData(formData.notes, encryptionKey) : '';
+      // Encrypt sensitive data before sending to backend
+      const encryptedUsernameData = encryptData(formData.username, encryptionKey);
+      const encryptedPasswordData = encryptData(formData.password, encryptionKey);
+      const encryptedNotesData = formData.notes ? encryptData(formData.notes, encryptionKey) : { encryptedData: '', iv: '', tag: '' }; // Handle empty notes
 
-      const passwordData = {
+      const passwordDataToSend = {
         website_url: formData.website_url,
-        encrypted_username: encryptedUsername,
-        encrypted_password: encryptedPassword,
-        encrypted_notes: encryptedNotes,
+        encrypted_username: encryptedUsernameData.encryptedData,
+        username_iv: encryptedUsernameData.iv,
+        username_tag: encryptedUsernameData.tag,
+        encrypted_password: encryptedPasswordData.encryptedData,
+        password_iv: encryptedPasswordData.iv,
+        password_tag: encryptedPasswordData.tag,
+        encrypted_notes: encryptedNotesData.encryptedData,
+        notes_iv: encryptedNotesData.iv,
+        notes_tag: encryptedNotesData.tag,
       };
 
-      if (currentPassword) {
-        await updatePassword(currentPassword.id, passwordData);
-        setPasswords(passwords.map(p => p.id === currentPassword.id ? {
-          ...p,
-          website_url: formData.website_url,
-          decryptedUsername: formData.username,
-          decryptedPassword: formData.password,
-          decryptedNotes: formData.notes,
-        } : p));
-        console.log(`Password with ID ${currentPassword.id} updated.`);
+      if (isEditing && currentPassword) {
+        await updatePassword(currentPassword.id, passwordDataToSend);
       } else {
-        const newPassword = await addPassword(passwordData);
-        setLoading(true);
-        setError(null);
-
-        console.log('New password added.', newPassword);
+        await createPassword(passwordDataToSend);
       }
 
-      setOpenDialog(false);
-      setFormData({ website_url: '', username: '', password: '', notes: '' });
+      handleCloseFormDialog();
+      fetchAndDecryptPasswords(); // Refresh list after saving
+
     } catch (err) {
-      console.error("Failed to save password:", err);
-      setError('Passwort konnte nicht gespeichert werden.');
+      console.error("Failed to save password:", err.response?.data || err.message);
+      setFormError(err.response?.data?.error || 'Fehler beim Speichern des Passworts.');
     }
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setCurrentPassword(null);
-    setFormData({ website_url: '', username: '', password: '', notes: '' });
-    setError(null);
+  // Open Delete Confirmation Dialog
+  const handleDeleteClick = (password) => {
+    setPasswordToDelete(password);
+    setOpenConfirmDialog(true);
   };
 
+  // Close Delete Confirmation Dialog
+  const handleCloseConfirmDialog = () => {
+    setOpenConfirmDialog(false);
+    setPasswordToDelete(null);
+  };
+
+  // Delete Password logic
+  const handleDeletePassword = async () => {
+    setFormError(null); // Use formError state for consistency, or add a new deleteError state
+    if (!passwordToDelete) return; // Should not happen if dialog is opened correctly
+
+    try {
+      await deletePassword(passwordToDelete.id);
+      handleCloseConfirmDialog();
+      fetchAndDecryptPasswords(); // Refresh list after deletion
+    } catch (err) {
+      console.error("Failed to delete password:", err.response?.data || err.message);
+      // Display error to the user, perhaps in the confirm dialog or as a general error
+      setFormError(err.response?.data?.error || 'Fehler beim Löschen des Passworts.');
+      // Keep the confirm dialog open to show the error
+    }
+  };
+
+  const filteredPasswords = passwords.filter(pw =>
+    (pw.website_url && pw.website_url.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (pw.username && pw.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (pw.notes && pw.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   if (loading) {
-    return (
-      <Container component="main" maxWidth="md" sx={{ mt: 8, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography variant="h6">Laden...</Typography>
-      </Container>
-    );
+    return <Typography>Lade Passwörter...</Typography>;
   }
 
-  if (error && !openDialog) {
-    return (
-      <Container component="main" maxWidth="md" sx={{ mt: 8 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
+  if (error) {
+    return <Typography color="error">{error}</Typography>;
   }
 
   return (
-    <Container component="main" maxWidth="md" sx={{ mt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography component="h1" variant="h5">Passwörter</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddPassword}>
+    <Container maxWidth="md">
+      <Box sx={{ my: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Deine Passwörter
+        </Typography>
+        <TextField
+          label="Passwörter suchen"
+          variant="outlined"
+          fullWidth
+          margin="normal"
+          value={searchTerm}
+          onChange={handleSearchChange}
+        />
+        <Button variant="contained" color="primary" onClick={handleAddPassword} sx={{ mt: 2 }}>
           Passwort hinzufügen
         </Button>
-      </Box>
-
-      {error && openDialog && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-      )}
-
-      {passwords.length === 0 ? (
-        <Typography variant="body1">Noch keine Passwörter vorhanden.</Typography>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table sx={{ minWidth: 650 }} aria-label="password table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Webseite</TableCell>
-                <TableCell>Benutzername</TableCell>
-                <TableCell>Passwort</TableCell>
-                <TableCell>Notizen</TableCell>
-                <TableCell align="right">Aktionen</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {passwords.map((password) => (
-                <TableRow key={password.id}>
-                  <TableCell component="th" scope="row">
-                    {password.website_url}
-                  </TableCell>
-                  <TableCell>{password.decryptedUsername}</TableCell>
-                  <TableCell>{password.decryptedPassword}</TableCell>
-                  <TableCell>{password.decryptedNotes}</TableCell>
-                  <TableCell align="right">
-                    <IconButton onClick={() => handleEditPassword(password)} color="primary">
+        <Paper elevation={2} sx={{ mt: 2 }}>
+          <List>
+            {filteredPasswords.map(password => (
+              <ListItem
+                key={password.id} 
+                secondaryAction={
+                  <>
+                    <IconButton edge="end" aria-label="edit" onClick={(e) => { e.stopPropagation(); handleEditPassword(password); }}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => handleDeletePassword(password.id)} color="error">
+                    {/* Call handleDeleteClick to open confirmation dialog */}
+                    <IconButton edge="end" aria-label="delete" onClick={(e) => { e.stopPropagation(); handleDeleteClick(password); }}>
                       <DeleteIcon />
                     </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+                  </>
+                }
+                onClick={() => handlePasswordClick(password)}
+                button
+              >
+                <ListItemText primary={password.website_url} secondary={password.username || '--'} />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>{currentPassword ? 'Passwort bearbeiten' : 'Passwort hinzufügen'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            name="website_url"
-            label="Webseite URL"
-            type="text"
-            fullWidth
-            variant="standard"
-            value={formData.website_url}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            name="username"
-            label="Benutzername"
-            type="text"
-            fullWidth
-            variant="standard"
-            value={formData.username}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            name="password"
-            label="Passwort"
-            type="password"
-            fullWidth
-            variant="standard"
-            value={formData.password}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            name="notes"
-            label="Notizen"
-            type="text"
-            fullWidth
-            multiline
-            rows={2}
-            variant="standard"
-            value={formData.notes}
-            onChange={handleInputChange}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Abbrechen</Button>
-          <Button onClick={handleSavePassword}>{currentPassword ? 'Speichern' : 'Hinzufügen'}</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Password Detail Dialog */}
+        <Dialog open={openDetailDialog} onClose={handleCloseDetailDialog}>
+          <DialogTitle>{currentPassword?.website_url}</DialogTitle>
+          <DialogContent>
+            <Typography><b>Benutzername:</b> {currentPassword?.username}</Typography>
+            <Typography><b>Passwort:</b> {currentPassword?.password}</Typography>
+            <Typography><b>Notizen:</b> {currentPassword?.notes || 'Keine Notizen'}</Typography>
+          </DialogContent>
+          <DialogActions>
+             {/* Buttons in detail view */}
+             <Button onClick={() => { handleEditPassword(currentPassword); }}>Bearbeiten</Button>
+             {/* Call handleDeleteClick from detail view */}
+            <Button onClick={() => { handleDeleteClick(currentPassword); handleCloseDetailDialog(); }}>Löschen</Button>
+            <Button onClick={handleCloseDetailDialog}>Schließen</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add/Edit Password Form Dialog */}
+        <Dialog open={openFormDialog} onClose={handleCloseFormDialog}>
+          <DialogTitle>{isEditing ? 'Passwort bearbeiten' : 'Passwort hinzufügen'}</DialogTitle>
+          <DialogContent>
+            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Website URL"
+              type="text"
+              fullWidth
+              variant="outlined"
+              name="website_url"
+              value={formData.website_url}
+              onChange={handleFormChange}
+            />
+            <TextField
+              margin="dense"
+              label="Benutzername"
+              type="text"
+              fullWidth
+              variant="outlined"
+              name="username"
+              value={formData.username}
+              onChange={handleFormChange}
+            />
+            <TextField
+              margin="dense"
+              label="Passwort"
+              type="password"
+              fullWidth
+              variant="outlined"
+              name="password"
+              value={formData.password}
+              onChange={handleFormChange}
+            />
+             <TextField
+              margin="dense"
+              label="Notizen (Optional)"
+              type="text"
+              fullWidth
+              variant="outlined"
+              name="notes"
+              value={formData.notes}
+              onChange={handleFormChange}
+              multiline
+              rows={4}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseFormDialog}>Abbrechen</Button>
+            <Button onClick={handleSavePassword} variant="contained">Speichern</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={openConfirmDialog}
+          onClose={handleCloseConfirmDialog}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">
+            Passwort löschen bestätigen?
+          </DialogTitle>
+          <DialogContent>
+            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+            <Typography id="alert-dialog-description">
+              Sind Sie sicher, dass Sie den Passwort-Eintrag für <strong>{passwordToDelete?.website_url}</strong> löschen möchten?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseConfirmDialog}>Abbrechen</Button>
+            <Button onClick={handleDeletePassword} variant="contained" color="error" autoFocus>
+              Löschen
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+      </Box>
     </Container>
   );
-}
+};
 
 export default DashboardPage; 

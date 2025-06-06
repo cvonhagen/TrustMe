@@ -33,18 +33,14 @@ function RegisterPage() {
       });
 
       setSuccess('Registrierung erfolgreich! Sie werden zum Login weitergeleitet...');
+      // Clear fields on success (optional)
+      setUsername('');
+      setPassword('');
       setTimeout(() => navigate('/login'), 2000);
     } catch (error) {
-      console.error("Registration failed:", error);
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else if (error.message) {
-        setError(error.message);
-      } else {
-        setError('Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
-      }
+      console.error("Registration failed:", error.response?.data || error.message);
+      // Adapt error handling to Go backend error response structure { error: "message" }
+      setError(error.response?.data?.error || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
     }
   };
 

@@ -4,6 +4,8 @@ import (
 	"backend/schemas"
 	"backend/services"
 
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -40,6 +42,12 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 // Login handles user login requests.
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	// Temporärer Test: Sofort eine statische 200 OK Antwort zurückgeben
+	// log.Println("AuthHandler.Login: Sending static 200 OK for testing.") // Debugging
+	// return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Static OK response for testing"})
+
+	// Originaler Code (auskommentiert):
+
 	var req schemas.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -55,5 +63,6 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
+	log.Printf("AuthHandler.Login: AuthService.LoginUser returned success for user %s. Sending OK response.", req.Username) // Debugging vor erfolgreicher Antwort
 	return c.Status(fiber.StatusOK).JSON(loginRes)
 }

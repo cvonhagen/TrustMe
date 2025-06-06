@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"backend/models"
 	"backend/schemas"
@@ -61,34 +62,47 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
 func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginResponse, error) {
 	// Get user by username
 	user, err := s.UserService.GetUserByUsername(req.Username)
+	log.Printf("AuthService.LoginUser: Attempting to get user by username: %s", req.Username) // Debugging
 	if err != nil {
+		log.Printf("AuthService.LoginUser: Error getting user %s: %v", req.Username, err) // Debugging
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("invalid username or password")
 		}
 		return nil, fmt.Errorf("error retrieving user: %w", err)
 	}
 
+	log.Printf("AuthService.LoginUser: User found: %s (ID: %d)", user.Username, user.ID) // Debugging: Bestätige, dass der Benutzer gefunden wurde
+
 	// Verify master password
 	match, err := security.VerifyPassword(req.MasterPassword, user.HashedMasterPassword, user.Salt)
 	if err != nil {
+		log.Printf("AuthService.LoginUser: Error verifying password for user %s: %v", user.Username, err) // Debugging
 		return nil, fmt.Errorf("error verifying password: %w", err)
 	}
 	if !match {
+		log.Printf("AuthService.LoginUser: Password mismatch for user: %s", user.Username) // Debugging
 		return nil, errors.New("invalid username or password")
 	}
+
+	log.Printf("AuthService.LoginUser: Password match for user: %s", user.Username) // Debugging
 
 	// Generate JWT token
 	token, err := security.GenerateJWTToken(user.ID)
 	if err != nil {
+		log.Printf("AuthService.LoginUser: Error generating token for user %s: %v", user.Username, err) // Debugging
 		return nil, fmt.Errorf("failed to generate JWT token: %w", err)
 	}
 
+	log.Printf("AuthService.LoginUser: Token generated successfully for user: %s", user.Username) // Debugging
+
 	// Return login response
-	return &schemas.LoginResponse{
+	loginResponse := &schemas.LoginResponse{
 		Token:        token,
 		UserID:       user.ID,
 		Username:     user.Username,
 		TwoFAEnabled: user.TwoFAEnabled,
 		Salt:         user.Salt, // Include salt for client-side decryption
-	}, nil
+	}
+	log.Printf("AuthService.LoginUser: Returning successful login response for user: %s", user.Username) // Debugging vor Return
+	return loginResponse, nil
 }

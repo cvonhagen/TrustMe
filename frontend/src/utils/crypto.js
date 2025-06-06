@@ -1,33 +1,33 @@
 import CryptoJS from 'crypto-js';
-// import 'crypto-js/lib-typedarrays'; // Might be needed for WordArray - No longer needed with Web Crypto API
-// import 'crypto-js/scrypt'; // Corrected Explicit import for Scrypt - No longer needed
-// import argon2 from 'argon2-browser'; // Import the argon2-browser library - Removing this
-// import loadArgon2idWasm from 'argon2id'; // Import the argon2id library - Removing this
+// import 'crypto-js/lib-typedarrays'; // Könnte für WordArray benötigt werden - Mit Web Crypto API nicht mehr nötig
+// import 'crypto-js/scrypt'; // Korrigierter expliziter Import für Scrypt - Nicht mehr nötig
+// import argon2 from 'argon2-browser'; // Importiere die argon2-browser Bibliothek - Entferne dies
+// import loadArgon2idWasm from 'argon2id'; // Importiere die argon2id Bibliothek - Entferne dies
 
 // Funktion zur Ableitung eines Schlüssels aus dem Master-Passwort und Salt unter Verwendung der Web Crypto API (PBKDF2)
 // Muss dieselben Parameter (Salt, Iterationen, Schlüssellänge, Hash) verwenden wie das Backend
 // Hinweis: Das Salt muss vom Backend beim Login/Registrierung bereitgestellt werden.
 export const deriveKeyFromPassword = async (password, saltBase64) => {
   try {
-    // Convert base64 salt to ArrayBuffer
+    // Konvertiere Base64 Salt zu ArrayBuffer
     const saltBuffer = Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0));
 
-    // PBKDF2 parameters (should match backend - values from backend/security/security.go)
+    // PBKDF2 Parameter (sollten mit dem Backend übereinstimmen - Werte aus backend/security/security.go)
     const iterations = 250000; // pbkdf2Iterations
-    const keyLength = 32; // pbkdf2KeyLen in bytes (for AES-256)
-    // Hash algorithm should also match backend
+    const keyLength = 32; // pbkdf2KeyLen in Bytes (für AES-256)
+    // Der Hash-Algorithmus sollte ebenfalls mit dem Backend übereinstimmen
     const hashAlgorithm = 'SHA-256';
 
-    // Import the password as key material
+    // Importiere das Passwort als Schlüsselmaterial
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
       new TextEncoder().encode(password),
       'PBKDF2',
-      false, // Not extractable
+      false, // Nicht extrahierbar
       ['deriveBits', 'deriveKey']
     );
 
-    // Derive the key using PBKDF2
+    // Leite den Schlüssel mit PBKDF2 ab
     const derivedKeyBuffer = await crypto.subtle.deriveBits(
       {
         name: 'PBKDF2',
@@ -36,21 +36,21 @@ export const deriveKeyFromPassword = async (password, saltBase64) => {
         hash: hashAlgorithm,
       },
       keyMaterial,
-      keyLength * 8 // keyLength in bits
+      keyLength * 8 // keyLength in Bits
     );
 
-    // Convert the ArrayBuffer to a Uint8Array
+    // Konvertiere den ArrayBuffer zu einem Uint8Array
     const derivedKeyBytes = new Uint8Array(derivedKeyBuffer);
 
-    // Convert the Uint8Array to a WordArray (CryptoJS format) for compatibility with existing AES-GCM functions
-    // Note: Ideally, we would also migrate AES-GCM to Web Crypto API or another library
+    // Konvertiere das Uint8Array zu einem WordArray (CryptoJS Format) für Kompatibilität mit bestehenden AES-GCM Funktionen
+    // Hinweis: Idealerweise würden wir auch AES-GCM zur Web Crypto API oder einer anderen Bibliothek migrieren
     const derivedKeyWordArray = CryptoJS.lib.WordArray.create(derivedKeyBytes);
 
     return derivedKeyWordArray;
 
   } catch (error) {
-    console.error("Error deriving key:", error);
-    throw new Error("Failed to derive encryption key.");
+    console.error("Fehler beim Ableiten des Schlüssels:", error);
+    throw new Error("Fehler beim Ableiten des Verschlüsselungsschlüssels.");
   }
 };
 
@@ -62,18 +62,18 @@ export const decryptData = (encryptedTextBase64, ivBase64, tagBase64, key) => {
     const ciphertext = CryptoJS.enc.Base64.parse(encryptedTextBase64);
     const tag = CryptoJS.enc.Base64.parse(tagBase64);
 
-    // Combine ciphertext and tag for CryptoJS AES-GCM format
-    // CryptoJS puts the tag at the end of the ciphertext WordArray
+    // Kombiniere Chiffretext und Tag für das CryptoJS AES-GCM Format
+    // CryptoJS legt den Tag am Ende des Chiffretext WordArray ab
     const  ciphertextWithTag = CryptoJS.lib.WordArray.create(
       ciphertext.words.concat(tag.words),
       ciphertext.sigBytes + tag.sigBytes
     );
 
-    // Create CipherParams object
+    // Erstelle CipherParams Objekt
     const cipherParams = CryptoJS.lib.CipherParams.create({
       ciphertext: ciphertextWithTag,
-      iv: iv // Include IV in CipherParams as well
-      // salt might also be needed here if used during encryption
+      iv: iv // Füge auch IV in CipherParams ein
+      // salt könnte hier auch benötigt werden, falls bei der Verschlüsselung verwendet
     });
 
     const decrypted = CryptoJS.AES.decrypt(
@@ -82,15 +82,15 @@ export const decryptData = (encryptedTextBase64, ivBase64, tagBase64, key) => {
       {
         mode: CryptoJS.mode.GCM,
         padding: CryptoJS.pad.NoPadding
-        // The authentication check is implicitly done by the decrypt function in GCM mode
+        // Die Authentifizierungsprüfung wird implizit von der Entschlüsselungsfunktion im GCM-Modus durchgeführt
       }
     );
 
     return decrypted.toString(CryptoJS.enc.Utf8);
   } catch (error) {
-    console.error("Error decrypting data:", error);
-    // Depending on the error (e.g., invalid tag), this might indicate incorrect key/data
-    throw new Error("Failed to decrypt data.");
+    console.error("Fehler beim Entschlüsseln von Daten:", error);
+    // Abhängig vom Fehler (z.B. ungültiger Tag) könnte dies auf einen falschen Schlüssel/Daten hindeuten
+    throw new Error("Fehler beim Entschlüsseln von Daten.");
   }
 };
 
@@ -98,7 +98,7 @@ export const decryptData = (encryptedTextBase64, ivBase64, tagBase64, key) => {
 export const encryptData = (data, key) => {
   try {
     // Generiere einen zufälligen IV (Initialization Vector)
-    const iv = CryptoJS.lib.WordArray.random(12); // 96 bits für GCM
+    const iv = CryptoJS.lib.WordArray.random(12); // 96 Bits für GCM
 
     // Verschlüssele die Daten
     const encrypted = CryptoJS.AES.encrypt(data, key, {
@@ -111,7 +111,7 @@ export const encryptData = (data, key) => {
     // In CryptoJS GCM wird der Tag am Ende des ciphertext gespeichert
     const tag = CryptoJS.lib.WordArray.create(
       encrypted.ciphertext.words.slice(-4), // Letzte 4 Wörter sind der Tag
-      16 // 128 bits
+      16 // 128 Bits
     );
 
     // Entferne den Tag aus dem ciphertext
@@ -127,10 +127,10 @@ export const encryptData = (data, key) => {
       tag: CryptoJS.enc.Base64.stringify(tag)
     };
   } catch (error) {
-    console.error("Error encrypting data:", error);
-    throw new Error("Failed to encrypt data.");
+    console.error("Fehler beim Verschlüsseln von Daten:", error);
+    throw new Error("Fehler beim Verschlüsseln von Daten.");
   }
 };
 
-// Placeholder for encryption if needed client-side (e.g., before sending to backend)
+// Platzhalter für die Verschlüsselung, falls client-seitig benötigt (z.B. vor dem Senden an das Backend)
 // export const encryptData = (data, key) => { ... }; 

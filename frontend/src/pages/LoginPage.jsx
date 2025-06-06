@@ -9,6 +9,7 @@ function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toggleColorMode, mode } = useThemeContext();
   const { login: authLogin } = useAuth();
@@ -16,27 +17,37 @@ function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setLoading(true);
+    console.log('handleSubmit gestartet');
+
+    console.log('Versuche loginUser aufzurufen...');
     try {
       const response = await loginUser({ username, master_password: password });
+      console.log('loginUser erfolgreich aufgerufen', response.data);
       
-      const { token, salt, two_fa_enabled } = response.data;
+      const { token, user_id, salt, two_fa_enabled } = response.data;
+      console.log('Daten extrahiert:', { token, user_id, salt, two_fa_enabled });
 
-      localStorage.setItem('access_token', token);
+      console.log('Rufe authLogin auf...');
+      await authLogin(username, password, salt, token);
+      console.log('authLogin abgeschlossen.');
 
-      await authLogin(username, password, salt);
-
-      setPassword('');
-
+      console.log('Prüfe two_fa_enabled:', two_fa_enabled);
       if (two_fa_enabled) {
-        navigate('/two-factor-verify', { state: { username: username } });
+        console.log('2FA aktiviert, leite zu 2FA-Verifizierung weiter (noch nicht implementiert).');
+        navigate('/dashboard');
       } else {
+        console.log('2FA nicht aktiviert, leite zu /dashboard weiter.');
         navigate('/dashboard');
       }
 
     } catch (error) {
+      console.log('Fehler im handleSubmit catch-Block.', error);
       console.error("Login failed:", error.response?.data || error.message);
       setError(error.response?.data?.error || 'Login fehlgeschlagen. Bitte überprüfen Sie Benutzername und Master-Passwort.');
     }
+    setLoading(false);
+    console.log('handleSubmit beendet.');
   };
 
   return (

@@ -13,61 +13,71 @@ import (
 )
 
 const (
-	// PBKDF2 parameters (should match frontend)
+	// PBKDF2 Parameter (sollten mit dem Frontend übereinstimmen)
 	pbkdf2Iterations = 250000 // Number of iterations
 	pbkdf2KeyLen     = 32     // Desired key length in bytes (for AES-256)
 	pbkdf2SaltLen    = 16     // Salt length in bytes
 )
 
-// HashPassword generates a PBKDF2 hash of the password with a random salt.
-// It returns the hash and the salt as base64 encoded strings.
+// HashPassword generiert einen PBKDF2 Hash des Passworts mit einem zufälligen Salt.
+// Es gibt den Hash und das Salt als Base64-kodierte Strings zurück.
 func HashPassword(password string) (hash string, salt string, err error) {
-	// Generate a random salt
+	// Generiere ein zufälliges Salt
 	saltBytes := make([]byte, pbkdf2SaltLen)
 	if _, err := rand.Read(saltBytes); err != nil {
 		return "", "", fmt.Errorf("failed to generate salt: %w", err)
 	}
 	salt = base64.RawStdEncoding.EncodeToString(saltBytes)
 
-	// Derive the key using PBKDF2 with SHA-256
+	// Leite den Schlüssel mit PBKDF2 und SHA-256 ab
 	hashBytes := pbkdf2.Key([]byte(password), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
 	hash = base64.RawStdEncoding.EncodeToString(hashBytes)
 
 	return hash, salt, nil
 }
 
-// VerifyPassword compares a plain password with a PBKDF2 hash.
-// It expects the stored hash and salt as base64 encoded strings.
+// VerifyPassword vergleicht ein Klartext-Passwort mit einem PBKDF2 Hash.
+// Es erwartet den gespeicherten Hash und das Salt als Base64-kodierte Strings.
 func VerifyPassword(plainPassword string, hashedPassword string, salt string) (bool, error) {
-	// Decode the salt from base64
+	log.Printf("VerifyPassword: Starting verification.")                                 // Debugging
+	log.Printf("VerifyPassword: plainPassword (for debugging only!): %s", plainPassword) // Debugging - ACHTUNG SICHERHEITSRISIKO!
+	log.Printf("VerifyPassword: hashedPassword: %s", hashedPassword)                     // Debugging
+	log.Printf("VerifyPassword: salt: %s", salt)                                         // Debugging
+
+	// Dekodiere das Salt von Base64
 	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
 	if err != nil {
+		log.Printf("VerifyPassword: Error decoding salt: %v", err) // Debugging
 		return false, fmt.Errorf("failed to decode salt: %w", err)
 	}
 
-	// Decode the stored hash from base64
+	// Dekodiere den gespeicherten Hash von Base64
 	storedHashBytes, err := base64.RawStdEncoding.DecodeString(hashedPassword)
 	if err != nil {
+		log.Printf("VerifyPassword: Error decoding hashedPassword: %v", err) // Debugging
 		return false, fmt.Errorf("failed to decode hashed password: %w", err)
 	}
 
-	// Derive the key from the plain password with the same salt and parameters
+	// Leite den Schlüssel vom Klartext-Passwort mit demselben Salt und denselben Parametern ab
 	comparisonHashBytes := pbkdf2.Key([]byte(plainPassword), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
+	log.Printf("VerifyPassword: Derived hash from plaintext and salt: %s", base64.RawStdEncoding.EncodeToString(comparisonHashBytes)) // Debugging
 
-	// Compare the generated hash with the stored hash
-	// Use constant-time comparison in production to mitigate timing attacks
-	// For simplicity, a direct byte comparison is used here.
-	// In a real application, consider using `crypto/subtle.ConstantTimeCompare`.
-	return string(comparisonHashBytes) == string(storedHashBytes), nil
+	// Vergleiche den generierten Hash mit dem gespeicherten Hash
+	// Verwende in der Produktion einen Vergleich mit konstanter Zeit, um Timing-Angriffe abzumildern
+	// Der Einfachheit halber wird hier ein direkter Byte-Vergleich verwendet.
+	// In einer realen Anwendung ziehe die Verwendung von `crypto/subtle.ConstantTimeCompare` in Betracht.
+	match := string(comparisonHashBytes) == string(storedHashBytes)
+	log.Printf("VerifyPassword: Hashes match: %t", match) // Debugging
+	return match, nil
 }
 
-// Note: JWT functions (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) and the jwtSecretKey variable are now in jwt.go
+// Hinweis: JWT Funktionen (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) und die Variable jwtSecretKey befinden sich jetzt in jwt.go
 
-// Ensure gorm is imported to avoid unused import errors if not used elsewhere in this file
+// Stelle sicher, dass gorm importiert ist, um unbenutzte Importfehler zu vermeiden, falls es an anderer Stelle in dieser Datei nicht verwendet wird
 var _ gorm.Model
 
-// Ensure log is imported to avoid unused import errors if not used elsewhere in this file
+// Stelle sicher, dass log importiert ist, um unbenutzte Importfehler zu vermeiden, falls es an anderer Stelle in dieser Datei nicht verwendet wird
 var _ *log.Logger
 
-// Ensure strings is imported to avoid unused import errors if not used elsewhere in this file
+// Stelle sicher, dass strings importiert ist, um unbenutzte Importfehler zu vermeiden, falls es an anderer Stelle in dieser Datei nicht verwendet wird
 var _ = strings.Join

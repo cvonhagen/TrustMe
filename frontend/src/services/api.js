@@ -1,16 +1,16 @@
 import axios from 'axios';
 
-// Placeholder for backend API base URL
-// This should be loaded from environment variables
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3030/api/v1'; // **ANGEPASST AUF PORT 3030**
+// Platzhalter für die Backend API Basis-URL
+// Dies sollte aus Umgebungsvariablen geladen werden
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3030/api/v1';
 
 let authToken = null; // Variable zur Speicherung des Tokens
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+	baseURL: API_BASE_URL,
+	headers: {
+		'Content-Type': 'application/json',
+	},
 });
 
 // Funktion zum Setzen des Tokens
@@ -25,12 +25,12 @@ export const setAuthToken = (token) => {
   }
 };
 
-// Add a request interceptor to include the auth token
+// Axios Interceptor für die Authentifizierung
 api.interceptors.request.use(
-  config => {
-    // Füge den Authorization Header nur hinzu, wenn es sich NICHT um die Login- oder Register-Route handelt
-    const publicRoutes = ['/auth/login', '/auth/register'];
-    const isPublicRoute = publicRoutes.some(route => config.url.endsWith(route));
+	config => {
+		// Füge den Authorization Header nur hinzu, wenn es sich NICHT um die Login- oder Register-Route handelt
+		const publicRoutes = ['/auth/login', '/auth/register'];
+		const isPublicRoute = publicRoutes.some(route => config.url.endsWith(route));
 
     const token = authToken;
     console.log('Axios Interceptor: Using token:', token, 'for URL:', config.url); // Debug-Ausgabe anpassen
@@ -53,9 +53,8 @@ api.interceptors.request.use(
   }
 );
 
-// Placeholder API functions
-
-// Authentication
+// API-Funktionen
+// Authentifizierung
 export const registerUser = (userData) => { console.log('api.js: registerUser called'); return api.post('/auth/register', userData); }; // Debugging
 export const loginUser = (credentials) => { console.log('api.js: loginUser called'); return api.post('/auth/login', credentials); }; // Debugging
 

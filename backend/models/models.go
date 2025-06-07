@@ -7,11 +7,13 @@ import (
 type User struct {
 	ID                   uint   `gorm:"primaryKey"`
 	Username             string `gorm:"uniqueIndex;not null"`
+	Email                string `gorm:"uniqueIndex;not null"`
 	HashedMasterPassword string `gorm:"type:text;not null"`
 	Salt                 string `gorm:"type:text;not null"`
 	TwoFAEnabled         bool   `gorm:"default:false"`
 	TwoFASecret          string `gorm:"type:text"` // nullable
 	CreatedAt            time.Time
+	UpdatedAt            time.Time
 	Passwords            []Password `gorm:"foreignKey:UserID"` // Relationship
 }
 

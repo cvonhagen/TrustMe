@@ -66,3 +66,14 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	log.Printf("AuthHandler.Login: AuthService.LoginUser returned success for user %s. Sending OK response.", req.Username) // Debugging vor erfolgreicher Antwort
 	return c.Status(fiber.StatusOK).JSON(loginRes)
 }
+
+// Logout handles user logout requests.
+func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	// Invalidate the token or session on the server-side if applicable.
+	// For JWT, invalidation often happens on the client by discarding the token.
+	// If a server-side session or token blacklist is used, implement that here.
+	log.Println("AuthHandler.Logout: User logged out.")
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Successfully logged out",
+	})
+}

@@ -71,3 +71,15 @@ func (s *TwoFAService) EnableTwoFA(userID uint) error {
 	// Save the user with the updated flag and the generated secret (which should have been stored earlier)
 	return s.DB.Save(user).Error
 }
+
+// DisableTwoFA disables 2FA for the user.
+func (s *TwoFAService) DisableTwoFA(userID uint) error {
+	user, err := s.UserService.GetUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	user.TwoFAEnabled = false
+	user.TwoFASecret = "" // Clear the secret
+	return s.DB.Save(user).Error
+}

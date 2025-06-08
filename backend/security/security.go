@@ -19,38 +19,46 @@ const (
 	pbkdf2SaltLen    = 16     // Salt-Länge in Bytes
 )
 
-// HashPassword generiert einen PBKDF2 Hash des Passworts mit einem zufälligen Salt.
-// Es gibt den Hash und das Salt als Base64-kodierte Strings zurück.
-func HashPassword(password string) (string, string, error) {
-	// Generiere ein zufälliges Salt
+// GenerateSalt generiert einen zufälligen Salt als Base64-kodierten String.
+func GenerateSalt() (string, error) {
 	salt := make([]byte, pbkdf2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
-		return "", "", fmt.Errorf("failed to generate salt: %w", err)
+		return "", fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
+	}
+	return base64.RawStdEncoding.EncodeToString(salt), nil
+}
+
+// HashPassword generiert einen PBKDF2 Hash des Passworts mit einem gegebenen Salt.
+// Es gibt den Hash als Base64-kodierten String zurück.
+func HashPassword(password, salt string) (string, error) {
+	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
+	if err != nil {
+		return "", fmt.Errorf("Fehler beim Dekodieren des Salts: %w", err)
 	}
 
 	// Leite den Schlüssel mit PBKDF2 und SHA-256 ab
-	key := pbkdf2.Key([]byte(password), salt, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
+	key := pbkdf2.Key([]byte(password), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
 
-	// Konvertiere zu Base64 Strings
+	// Konvertiere zu Base64 String
 	keyBase64 := base64.RawStdEncoding.EncodeToString(key)
-	saltBase64 := base64.RawStdEncoding.EncodeToString(salt)
 
-	return keyBase64, saltBase64, nil
+	return keyBase64, nil
 }
 
-// VerifyPassword vergleicht ein Klartext-Passwort mit einem PBKDF2 Hash.
+// VerifyPassword vergleicht ein Klartext-Passwort mit einem PBKDF2 Hash unter Verwendung des gegebenen Salts.
 // Es erwartet den gespeicherten Hash und das Salt als Base64-kodierte Strings.
+// Es gibt true zurück, wenn die Passwörter übereinstimmen, ansonsten false.
 func VerifyPassword(plainPassword, hashedPassword, salt string) (bool, error) {
 	// Dekodiere das Salt von Base64
 	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode salt: %w", err)
+		return false, fmt.Errorf("Fehler beim Dekodieren des Salts: %w", err)
 	}
 
 	// Dekodiere den gespeicherten Hash von Base64
 	storedHashBytes, err := base64.RawStdEncoding.DecodeString(hashedPassword)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode hashed password: %w", err)
+		return false, fmt.Errorf("Fehler beim Dekodieren des gehashten Passworts: %w", err)
 	}
 
 	// Leite den Schlüssel vom Klartext-Passwort mit demselben Salt und denselben Parametern ab
@@ -65,7 +73,7 @@ func VerifyPassword(plainPassword, hashedPassword, salt string) (bool, error) {
 	return match, nil
 }
 
-// Hinweis: JWT Funktionen (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) und die Variable jwtSecretKey befinden sich jetzt in jwt.go
+// Hinweis: JWT-Funktionen (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) und die Variable jwtSecretKey befinden sich jetzt in jwt.go
 
 // Stelle sicher, dass gorm importiert ist, um unbenutzte Importfehler zu vermeiden
 var _ *gorm.DB

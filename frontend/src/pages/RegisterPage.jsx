@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import { Container, TextField, Button, Typography, Box, Link, Paper } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Link, Paper, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { registerUser } from '../services/api';
 
+// RegisterPage-Komponente für die Benutzerregistrierung.
 function RegisterPage() {
+  // Zustandsvariablen für Benutzername, Passwort, Fehler- und Erfolgsmeldungen
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState(null); // Fehler auf null initialisieren
+  const [success, setSuccess] = useState(null); // Erfolg auf null initialisieren
+  // Hook für die Navigation
   const navigate = useNavigate();
 
+  // handleSubmit behandelt den Registrierungsvorgang.
   const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
+    event.preventDefault(); // Standardformularübermittlung verhindern
+    setError(null); // Vorherige Fehler zurücksetzen
+    setSuccess(null); // Vorherige Erfolgsmeldungen zurücksetzen
 
-    // Validierung
+    // Clientseitige Validierung der Eingabefelder
     if (!username || !password) {
       setError('Bitte füllen Sie alle Felder aus.');
       return;
@@ -27,20 +31,21 @@ function RegisterPage() {
     }
 
     try {
+      // API-Aufruf zur Registrierung des Benutzers
       await registerUser({ 
         username, 
         master_password: password 
       });
 
       setSuccess('Registrierung erfolgreich! Sie werden zum Login weitergeleitet...');
-      // Clear fields on success (optional)
+      // Felder nach erfolgreicher Registrierung leeren
       setUsername('');
       setPassword('');
+      // Nach 2 Sekunden zum Login-Bildschirm weiterleiten
       setTimeout(() => navigate('/login'), 2000);
-    } catch (error) {
-      console.error("Registration failed:", error.response?.data || error.message);
-      // Adapt error handling to Go backend error response structure { error: "message" }
-      setError(error.response?.data?.error || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+    } catch (err) {
+      // Fehlerbehandlung: Fehlermeldung aus der API-Antwort extrahieren oder generische Nachricht anzeigen.
+      setError(err.response?.data?.error || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -65,10 +70,17 @@ function RegisterPage() {
           alignItems: 'center',
         }}
       >
+        {/* Überschrift der Registrierungsseite */}
         <Typography component="h1" variant="h5" sx={{ mb: 3 }}>
           Registrieren
         </Typography>
+        {/* Beschreibungstext für die Registrierungsseite */}
+        <Typography variant="body1" sx={{ mb: 3, textAlign: 'center' }}>
+          Erstellen Sie Ihr TrustMe-Konto, um Ihre Passwörter sicher zu speichern und zu verwalten. Es ist schnell und einfach!
+        </Typography>
+        {/* Registrierungsformular */}
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ width: '100%' }}>
+          {/* Benutzernamen-Eingabefeld */}
           <TextField
             margin="normal"
             required
@@ -82,6 +94,7 @@ function RegisterPage() {
             onChange={(e) => setUsername(e.target.value)}
             error={!!error}
           />
+          {/* Master-Passwort-Eingabefeld */}
           <TextField
             margin="normal"
             required
@@ -96,16 +109,19 @@ function RegisterPage() {
             error={!!error}
             helperText={password.length > 0 && password.length < 8 ? "Mindestens 8 Zeichen" : ""}
           />
+          {/* Anzeige von Fehlermeldungen */}
           {error && (
-            <Typography color="error" variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
+            <Alert severity="error" sx={{ mt: 2, mb: 3 }}>
               {error}
-            </Typography>
+            </Alert>
           )}
+          {/* Anzeige von Erfolgsmeldungen */}
           {success && (
-            <Typography color="success.main" variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
+            <Alert severity="success" sx={{ mt: 2, mb: 3 }}>
               {success}
-            </Typography>
+            </Alert>
           )}
+          {/* Registrieren Button */}
           <Button
             type="submit"
             fullWidth
@@ -114,6 +130,7 @@ function RegisterPage() {
           >
             Registrieren
           </Button>
+          {/* Link zum Login */}
           <Box sx={{ textAlign: 'center' }}>
             <Link href="/login" variant="body2">
               {"Sie haben bereits einen Account? Einloggen"}

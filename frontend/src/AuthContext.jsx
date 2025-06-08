@@ -3,84 +3,78 @@ import { deriveKeyFromPassword } from './utils/crypto'; // Importiere die Schlü
 import { setAuthToken } from './services/api'; // Korrigierter Importpfad
 import { useThemeContext } from './ThemeContext';
 
-// Erstelle den AuthContext
+// Erstelle den AuthContext, der Benutzer- und Verschlüsselungsschlüsselinformationen sowie Authentifizierungsfunktionen bereitstellt.
 export const AuthContext = createContext({
-	user: null, // Speichere den Benutzer hier
-	encryptionKey: null, // Speichere den abgeleiteten Verschlüsselungsschlüssel hier
-	login: async (username, masterPassword, saltBase64, token) => {}, // Methode zum Login und Schlüsselableitung
-	logout: () => {}, // Methode zum Logout
-	isAuthenticated: false, // Authentifizierungsstatus
+	user: null,         // Speichert die Benutzerinformationen (z.B. Benutzername)
+	encryptionKey: null, // Speichert den abgeleiteten Verschlüsselungsschlüssel
+	login: async (username, masterPassword, saltBase64, token) => {}, // Methode zum Anmelden des Benutzers und Ableiten des Schlüssels
+	logout: () => {},     // Methode zum Abmelden des Benutzers
+	isAuthenticated: false, // Zeigt an, ob der Benutzer authentifiziert ist
 });
 
+// AuthProvider-Komponente umschließt die Anwendung und stellt den Authentifizierungskontext bereit.
 export const AuthProvider = ({ children }) => {
-	const [user, setUser] = useState(null);
-	const [isAuthenticated, setIsAuthenticated] = useState(false);
-	const [loadingAuth, setLoadingAuth] = useState(true);
-	const [encryptionKey, setEncryptionKey] = useState(null);
+	const [user, setUser] = useState(null); // Zustand für den angemeldeten Benutzer
+	const [isAuthenticated, setIsAuthenticated] = useState(false); // Zustand für den Authentifizierungsstatus
+	const [loadingAuth, setLoadingAuth] = useState(true); // Zustand für den Ladezustand der Authentifizierung
+	const [encryptionKey, setEncryptionKey] = useState(null); // Zustand für den Verschlüsselungsschlüssel
 
-	// Funktion zum Laden des Authentifizierungsstatus aus dem Local Storage
+	// loadAuthStatus überprüft den lokalen Speicher auf einen vorhandenen Token, um den Authentifizierungsstatus wiederherzustellen.
 	const loadAuthStatus = async () => {
 		const storedToken = localStorage.getItem('access_token');
 		if (storedToken) {
-			setAuthToken(storedToken); // Setze den Token in api.js
+			setAuthToken(storedToken); // Setze den Token im API-Service
 			// In einer Produktions-App MUSS der Token gegen das Backend validiert und Benutzerdetails geladen werden!
 			setUser({}); // Setze einen Platzhalter-Benutzer, um isAuthenticated auf true zu setzen
 			setIsAuthenticated(true);
 		} else {
 			setAuthToken(null); // Stelle sicher, dass der Token in api.js null ist
-			setUser(null); // Kein Token im localStorage
+			setUser(null);      // Kein Token im localStorage, Benutzer ist nicht angemeldet
 			setIsAuthenticated(false);
 		}
-		// Der encryptionKey kann hier NICHT wiederhergestellt werden, da er nicht gespeichert wird
+		// Der encryptionKey kann hier NICHT wiederhergestellt werden, da er nicht im Local Storage gespeichert wird.
 		// Der Benutzer muss das Master-Passwort erneut eingeben, um den Schlüssel nach dem Neuladen wiederherzustellen.
 
-    setLoadingAuth(false); // Ladezustand beenden, unabhängig vom Erfolg
-    console.log('AuthContext: loadingAuth set to false.'); // Debugging
+    setLoadingAuth(false); // Beendet den Ladezustand, unabhängig vom Erfolg
   };
 
-	// Lade Authentifizierungsstatus beim Mounten der Komponente
+	// useEffect Hook wird beim Mounten der Komponente ausgeführt, um den Authentifizierungsstatus zu laden.
 	useEffect(() => {
 		loadAuthStatus();
 	}, []); // Leeres Array stellt sicher, dass dies nur einmal beim Mounten ausgeführt wird
 
-  // Modified login function to handle key derivation and token storage
+  // login-Funktion behandelt den Anmeldevorgang, leitet den Verschlüsselungsschlüssel ab und speichert den Token.
   const login = async (username, password, salt, token) => {
     try {
-      console.log('AuthContext: Starting login process.'); // Debugging
-      // Derive the encryption key client-side
+      // Leite den Verschlüsselungsschlüssel auf Client-Seite ab
       const derivedKey = await deriveKeyFromPassword(password, salt);
-      setEncryptionKey(derivedKey); // Store the derived key in state
-      console.log('AuthContext: Encryption key derived.'); // Debugging
+      setEncryptionKey(derivedKey); // Speichert den abgeleiteten Schlüssel im Zustand
 
-      // Speichere den JWT Token über die api.js Funktion
-      setAuthToken(token); // Setze den Token in api.js und localStorage
-      console.log('AuthContext: setAuthToken called with token:', token); // Debugging
+      // Speichere den JWT Token über die api.js Funktion und im Local Storage
+      setAuthToken(token); 
 
-      setUser({ username }); // Setze den Benutzerstatus
-
-      console.log('AuthContext: User and token state updated after login.'); // Debugging
+      setUser({ username }); // Setzt den Benutzerstatus
 
     } catch (error) {
-      console.error('AuthContext: Failed to derive encryption key or store token during login:', error);
-      // Handle error
+      // Fehlerbehandlung: Schlüssel und Benutzerinformationen zurücksetzen
       setEncryptionKey(null);
       setUser(null);
       setAuthToken(null); // Stelle sicher, dass der Token bei Fehlern entfernt wird
-      throw error;
+      throw error; // Fehler weiterleiten
     }
   };
 
+	// logout-Funktion meldet den Benutzer ab und löscht Authentifizierungsstatus und Schlüssel.
 	const logout = () => {
-		// Lösche Authentifizierungsstatus und Verschlüsselungsschlüssel
-		setUser(null);
-		setEncryptionKey(null);
-		setIsAuthenticated(false);
-		setAuthToken(null); // Setze Token auf null über die api.js Funktion
+		setUser(null);                 // Benutzernull setzen
+		setEncryptionKey(null);        // Verschlüsselungsschlüssel löschen
+		setIsAuthenticated(false);     // Authentifizierungsstatus auf false setzen
+		setAuthToken(null);            // Token auf null setzen über die api.js Funktion
 	};
 
-	// Zeige einen Ladezustand, während der Authentifizierungsstatus geprüft wird
+	// Zeigt einen Ladezustand an, während der Authentifizierungsstatus geprüft wird.
 	if (loadingAuth) {
-		return <div>Lade Authentifizierung...</div>; // Oder eine bessere Ladeanzeige
+		return <div>Lade Authentifizierung...</div>; // Oder eine bessere Ladeanzeige (z.B. Spinner)
 	}
 
 	return (
@@ -90,7 +84,7 @@ export const AuthProvider = ({ children }) => {
 	);
 };
 
-// Custom hook to use the AuthContext
+// Custom hook useAuth erleichtert den Zugriff auf den AuthContext in funktionalen Komponenten.
 export const useAuth = () => {
   return useContext(AuthContext);
 }; 

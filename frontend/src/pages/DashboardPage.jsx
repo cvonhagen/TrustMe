@@ -7,39 +7,42 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { getPasswords, createPassword, updatePassword, deletePassword } from '../services/api';
-import { decryptData, encryptData } from '../utils/crypto';
+import { decryptData, encryptData, generatePassword } from '../utils/crypto';
 import { useAuth } from '../AuthContext';
 import { useThemeContext } from '../ThemeContext';
 
+// DashboardPage ist die Hauptkomponente für die Passwortverwaltung.
+// Sie zeigt Passwörter an, ermöglicht das Hinzufügen, Bearbeiten und Löschen.
 const DashboardPage = () => {
-  const [passwords, setPasswords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [openDetailDialog, setOpenDetailDialog] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState(null);
+  const [passwords, setPasswords] = useState([]);         // Zustand für die Liste der Passwörter
+  const [loading, setLoading] = useState(true);             // Zustand für den Ladezustand der Passwörter
+  const [error, setError] = useState(null);                 // Zustand für Fehlermeldungen
+  const [searchTerm, setSearchTerm] = useState('');           // Zustand für den Suchbegriff
+  const [openDetailDialog, setOpenDetailDialog] = useState(false); // Zustand für das Detail-Dialogfeld
+  const [currentPassword, setCurrentPassword] = useState(null);   // Zustand für das aktuell ausgewählte Passwort
 
-  const [openFormDialog, setOpenFormDialog] = useState(false);
-  const [formData, setFormData] = useState({
+  const [openFormDialog, setOpenFormDialog] = useState(false);   // Zustand für das Formular-Dialogfeld (Hinzufügen/Bearbeiten)
+  const [formData, setFormData] = useState({                  // Zustand für die Formulardaten
     website_url: '',
     username: '',
     password: '',
     notes: '',
   });
-  const [isEditing, setIsEditing] = useState(false);
-  const [formError, setFormError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);            // Zustand, ob der Bearbeitungsmodus aktiv ist
+  const [formError, setFormError] = useState(null);             // Zustand für Fehler im Formular
 
-  // State for Delete Confirmation Dialog
+  // Zustände für das Bestätigungsdialogfeld zum Löschen
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [passwordToDelete, setPasswordToDelete] = useState(null);
 
+  // Authentifizierungs- und Theme-Kontext abrufen
   const { encryptionKey, isAuthenticated, loadingAuth } = useAuth();
   const { toggleColorMode, mode } = useThemeContext();
 
-  // Neuer State, um zu verfolgen, welche Passwörter sichtbar sind (Map: passwordId -> boolean)
+  // Neuer Zustand, um zu verfolgen, welche Passwörter sichtbar sind (Map: passwordId -> boolean)
   const [visiblePasswords, setVisiblePasswords] = useState({});
 
-  // Funktion zum Umschalten der Passwort-Sichtbarkeit
+  // togglePasswordVisibility schaltet die Sichtbarkeit eines Passworts um.
   const togglePasswordVisibility = (passwordId) => {
     setVisiblePasswords(prevState => ({
       ...prevState,
@@ -47,7 +50,7 @@ const DashboardPage = () => {
     }));
   };
 
-  // Function to fetch and decrypt passwords
+  // fetchAndDecryptPasswords ruft verschlüsselte Passwörter vom Backend ab und entschlüsselt sie.
   const fetchAndDecryptPasswords = async () => {
     if (!encryptionKey) {
       setLoading(false);
@@ -61,11 +64,12 @@ const DashboardPage = () => {
       const response = await getPasswords();
       const encryptedPasswords = response.data;
 
-      const decryptedPasswords = encryptedPasswords.map(pw => {
+      const decryptedPasswords = await Promise.all(encryptedPasswords.map(async pw => {
         try {
-          const decryptedUsername = pw.encrypted_username ? decryptData(pw.encrypted_username, pw.username_iv, pw.username_tag, encryptionKey) : '';
-          const decryptedPassword = pw.encrypted_password ? decryptData(pw.encrypted_password, pw.password_iv, pw.password_tag, encryptionKey) : '';
-          const decryptedNotes = pw.encrypted_notes ? decryptData(pw.encrypted_notes, pw.notes_iv, pw.notes_tag, encryptionKey) : '';
+          // Entschlüsseln der Felder des Passwort-Eintrags
+          const decryptedUsername = pw.encrypted_username ? await decryptData(pw.encrypted_username, pw.username_iv, pw.username_tag, encryptionKey) : '';
+          const decryptedPassword = pw.encrypted_password ? await decryptData(pw.encrypted_password, pw.password_iv, pw.password_tag, encryptionKey) : '';
+          const decryptedNotes = pw.encrypted_notes ? await decryptData(pw.encrypted_notes, pw.notes_iv, pw.notes_tag, encryptionKey) : '';
           
           return {
             ...pw,
@@ -74,7 +78,8 @@ const DashboardPage = () => {
             notes: decryptedNotes
           };
         } catch (decryptError) {
-          console.error("Error decrypting password:", decryptError);
+          // Fehlerbehandlung bei der Entschlüsselung
+          console.error("Fehler beim Entschlüsseln eines Passwort-Eintrags:", decryptError);
           return { 
             ...pw, 
             website_url: pw.website_url + " [Entschlüsselungsfehler]",
@@ -83,49 +88,50 @@ const DashboardPage = () => {
             notes: "[Entschlüsselungsfehler]"
           };
         }
-      });
+      }));
 
-      setPasswords(decryptedPasswords);
+      setPasswords(decryptedPasswords); // Entschlüsselte Passwörter im Zustand speichern
     } catch (err) {
-      console.error("Failed to fetch passwords:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Fehler beim Laden der Passwörter.");
+      console.error("Fehler beim Laden der Passwörter:", err);
+      setError(err.response?.data?.error || "Fehler beim Laden der Passwörter."); // Fehlermeldung setzen
     } finally {
-      setLoading(false);
+      setLoading(false); // Ladezustand beenden
     }
   };
 
-  // Fetch passwords on component mount or when encryptionKey changes
+  // useEffect Hook zum Abrufen der Passwörter beim Laden der Komponente oder Änderung des Schlüssels/Authentifizierungsstatus.
   useEffect(() => {
     if (!loadingAuth && isAuthenticated && encryptionKey) {
-        console.log("Fetching passwords...");
-        fetchAndDecryptPasswords();
+        fetchAndDecryptPasswords(); // Passwörter abrufen und entschlüsseln
     } else if (!loadingAuth && !isAuthenticated) {
-        console.log("User not authenticated, clearing passwords.");
-        setPasswords([]);
-        setLoading(false);
-        setError(null);
+        setPasswords([]);     // Passwörter leeren, wenn nicht authentifiziert
+        setLoading(false);    // Ladezustand beenden
+        setError(null);       // Fehler zurücksetzen
     } else if (!loadingAuth && isAuthenticated && !encryptionKey) {
-      console.log("User authenticated but no encryption key, waiting for key.");
-      setPasswords([]);
-      setLoading(false);
-      setError("Bitte melden Sie sich erneut an, um Ihre Passwörter zu sehen.");
+      setPasswords([]);     // Passwörter leeren, wenn Schlüssel fehlt
+      setLoading(false);    // Ladezustand beenden
+      setError("Bitte melden Sie sich erneut an, um Ihre Passwörter zu sehen."); // Fehlermeldung setzen
     }
-  }, [encryptionKey, isAuthenticated, loadingAuth]);
+  }, [encryptionKey, isAuthenticated, loadingAuth]); // Abhängigkeiten für den Hook
 
+  // handleSearchChange aktualisiert den Suchbegriff.
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
   };
 
+  // handlePasswordClick öffnet das Detail-Dialogfeld für ein ausgewähltes Passwort.
   const handlePasswordClick = (password) => {
     setCurrentPassword(password);
     setOpenDetailDialog(true);
   };
 
+  // handleCloseDetailDialog schließt das Detail-Dialogfeld.
   const handleCloseDetailDialog = () => {
     setOpenDetailDialog(false);
     setCurrentPassword(null);
   };
 
+  // handleAddPassword initialisiert das Formular für einen neuen Passwort-Eintrag und öffnet das Formular-Dialogfeld.
   const handleAddPassword = () => {
     setFormData({
       website_url: '',
@@ -138,6 +144,13 @@ const DashboardPage = () => {
     setOpenFormDialog(true);
   };
 
+  // handleGeneratePassword generiert ein neues Passwort und aktualisiert das Formularfeld.
+  const handleGeneratePassword = () => {
+    const newPassword = generatePassword(); // Generiert ein Passwort mit Standardoptionen
+    setFormData(prev => ({ ...prev, password: newPassword }));
+  };
+
+  // handleEditPassword bereitet das Formular für die Bearbeitung eines Passworts vor und öffnet das Formular-Dialogfeld.
   const handleEditPassword = (password) => {
     setFormData({
       website_url: password.website_url,
@@ -152,6 +165,7 @@ const DashboardPage = () => {
     setOpenFormDialog(true);
   };
 
+  // handleCloseFormDialog schließt das Formular-Dialogfeld und setzt die Formulardaten zurück.
   const handleCloseFormDialog = () => {
     setOpenFormDialog(false);
     setFormData({
@@ -165,6 +179,7 @@ const DashboardPage = () => {
     setFormError(null);
   };
 
+  // handleFormChange aktualisiert die Formulardaten bei Eingabeänderungen.
   const handleFormChange = (event) => {
     const { name, value } = event.target;
     setFormData(prevFormData => ({
@@ -173,7 +188,7 @@ const DashboardPage = () => {
     }));
   };
 
-  // Save Password logic (Add or Edit)
+  // handleSavePassword speichert oder aktualisiert einen Passwort-Eintrag.
   const handleSavePassword = async () => {
     setFormError(null);
     if (!encryptionKey) {
@@ -187,9 +202,10 @@ const DashboardPage = () => {
     }
 
     try {
-      const encryptedUsernameData = encryptData(formData.username, encryptionKey);
-      const encryptedPasswordData = encryptData(formData.password, encryptionKey);
-      const encryptedNotesData = formData.notes ? encryptData(formData.notes, encryptionKey) : { encryptedText: '', iv: '', tag: '' };
+      // Daten vor dem Senden an das Backend verschlüsseln
+      const encryptedUsernameData = await encryptData(formData.username, encryptionKey);
+      const encryptedPasswordData = await encryptData(formData.password, encryptionKey);
+      const encryptedNotesData = formData.notes ? await encryptData(formData.notes, encryptionKey) : { encryptedText: '', iv: '', tag: '' };
 
       const passwordDataToSend = {
         website_url: formData.website_url,
@@ -204,285 +220,246 @@ const DashboardPage = () => {
         notes_tag: encryptedNotesData.tag,
       };
 
-      if (isEditing && currentPassword) {
+      if (isEditing) {
+        // Bestehendes Passwort aktualisieren
         await updatePassword(currentPassword.id, passwordDataToSend);
       } else {
+        // Neues Passwort erstellen
         await createPassword(passwordDataToSend);
       }
 
-      handleCloseFormDialog();
-      fetchAndDecryptPasswords();
-
+      fetchAndDecryptPasswords(); // Passwörter nach Speicherung neu laden
+      handleCloseFormDialog();    // Formular schließen
     } catch (err) {
-      console.error("Failed to save password:", err.response?.data || err.message);
-      setFormError(err.response?.data?.error || 'Fehler beim Speichern des Passworts.');
+      setFormError(err.response?.data?.error || "Fehler beim Speichern des Passworts."); // Fehlermeldung setzen
     }
   };
 
-  // Open Delete Confirmation Dialog
+  // handleDeleteClick öffnet das Bestätigungsdialogfeld zum Löschen.
   const handleDeleteClick = (password) => {
     setPasswordToDelete(password);
     setOpenConfirmDialog(true);
   };
 
-  // Close Delete Confirmation Dialog
+  // handleCloseConfirmDialog schließt das Bestätigungsdialogfeld zum Löschen.
   const handleCloseConfirmDialog = () => {
     setOpenConfirmDialog(false);
     setPasswordToDelete(null);
   };
 
-  // Delete Password logic
+  // handleDeletePassword löscht ein Passwort nach Bestätigung.
   const handleDeletePassword = async () => {
-    setFormError(null);
-    if (!passwordToDelete) return;
-
     try {
       await deletePassword(passwordToDelete.id);
-      handleCloseConfirmDialog();
-      fetchAndDecryptPasswords();
+      fetchAndDecryptPasswords(); // Passwörter nach Löschung neu laden
+      handleCloseConfirmDialog(); // Bestätigungsdialog schließen
     } catch (err) {
-      console.error("Failed to delete password:", err.response?.data || err.message);
-      setFormError(err.response?.data?.error || 'Fehler beim Löschen des Passworts.');
+      setError(err.response?.data?.error || "Fehler beim Löschen des Passworts."); // Fehlermeldung setzen
     }
   };
 
+  // Filtert Passwörter basierend auf dem Suchbegriff.
   const filteredPasswords = passwords.filter(pw =>
-    (pw.website_url && pw.website_url.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (pw.username && pw.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (pw.notes && pw.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+    pw.website_url.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (pw.username && pw.username.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  if (loadingAuth) {
-    return <Typography>Lade Authentifizierungsstatus...</Typography>;
-  }
-
-  if (loading) {
-    return <Typography>Lade Passwörter...</Typography>;
-  }
-
-  if (error) {
-    return <Typography color="error">{error}</Typography>;
-  }
-
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 4, mx: 'auto', width: '100%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Deine Passwörter
-          </Typography>
-          <IconButton sx={{ ml: 1 }} onClick={toggleColorMode} color="inherit">
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Ihre Passwörter
+        </Typography>
+        <Box>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleAddPassword}
+            sx={{ mr: 2 }}
+          >
+            Passwort hinzufügen
+          </Button>
+          <IconButton onClick={toggleColorMode} color="inherit">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
         </Box>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <TextField
-            label="Passwörter suchen"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          <Button variant="contained" color="primary" onClick={handleAddPassword} sx={{ mt: 2 }}>
-            Passwort hinzufügen
-          </Button>
-          <TableContainer sx={{ mt: 2 }}>
-            <Table aria-label="Passworttabelle">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Website</TableCell>
-                  <TableCell>Benutzername</TableCell>
-                  <TableCell>Passwort</TableCell>
-                  <TableCell align="right">Aktionen</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredPasswords.map((password) => (
-                  <TableRow
-                    key={password.id}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell component="th" scope="row">
-                      {password.website_url}
-                    </TableCell>
-                    <TableCell>{password.username}</TableCell>
-                    <TableCell>
-                      {visiblePasswords[password.id] ? (
-                        password.password
-                      ) : (
-                        '********'
-                      )}
-                      <IconButton
-                        aria-label="Passwort anzeigen/verbergen"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          togglePasswordVisibility(password.id);
-                        }}
-                        size="small"
-                        sx={{ ml: 1 }}
-                      >
-                        {visiblePasswords[password.id] ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                      </IconButton>
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        aria-label="bearbeiten"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleEditPassword(password);
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label="löschen"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteClick(password);
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-        <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
-          <Typography variant="h6" component="h2" gutterBottom>
-            Optionen
-          </Typography>
-          <Button variant="outlined" color="primary" sx={{ mr: 2 }}>
-            2FA aktivieren
-          </Button>
-        </Paper>
-
-        <Dialog open={openDetailDialog} onClose={handleCloseDetailDialog}>
-          <DialogTitle>Passwort Details</DialogTitle>
-          <DialogContent>
-            {currentPassword && (
-              <Box>
-                <Typography variant="h6">Website:</Typography>
-                <Typography>{currentPassword.website_url}</Typography>
-                <Typography variant="h6" sx={{ mt: 2 }}>Benutzername:</Typography>
-                <Typography>{currentPassword.username}</Typography>
-                {visiblePasswords[currentPassword.id] && (
-                  <>
-                    <Typography variant="h6" sx={{ mt: 2 }}>Passwort:</Typography>
-                    <Typography>{currentPassword.password}</Typography>
-                  </>
-                )}
-                {currentPassword.notes && (
-                  <>
-                    <Typography variant="h6" sx={{ mt: 2 }}>Notizen:</Typography>
-                    <Typography>{currentPassword.notes}</Typography>
-                  </>
-                )}
-              </Box>
-            )}
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDetailDialog}>Schließen</Button>
-            {currentPassword && (
-              <Button onClick={() => handleEditPassword(currentPassword)} color="primary">
-                Bearbeiten
-              </Button>
-            )}
-          </DialogActions>
-        </Dialog>
-
-        <Dialog open={openFormDialog} onClose={handleCloseFormDialog}>
-          <DialogTitle>{isEditing ? 'Passwort bearbeiten' : 'Passwort hinzufügen'}</DialogTitle>
-          <DialogContent>
-            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
-            <TextField
-              autoFocus
-              margin="dense"
-              name="website_url"
-              label="Website URL"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={formData.website_url}
-              onChange={handleFormChange}
-              required
-              error={!formData.website_url && formError !== null}
-              helperText={!formData.website_url && formError !== null ? "Website URL ist erforderlich" : ""}
-            />
-            <TextField
-              margin="dense"
-              name="username"
-              label="Benutzername"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={formData.username}
-              onChange={handleFormChange}
-              required
-              error={!formData.username && formError !== null}
-              helperText={!formData.username && formError !== null ? "Benutzername ist erforderlich" : ""}
-            />
-            <TextField
-              margin="dense"
-              name="password"
-              label="Passwort"
-              type="password"
-              fullWidth
-              variant="outlined"
-              value={formData.password}
-              onChange={handleFormChange}
-              required
-              error={!formData.password && formError !== null}
-              helperText={!formData.password && formError !== null ? "Passwort ist erforderlich" : ""}
-            />
-            <TextField
-              margin="dense"
-              name="notes"
-              label="Notizen (optional)"
-              type="text"
-              fullWidth
-              variant="outlined"
-              multiline
-              rows={2}
-              value={formData.notes}
-              onChange={handleFormChange}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseFormDialog}>Abbrechen</Button>
-            <Button onClick={handleSavePassword} color="primary">
-              {isEditing ? 'Speichern' : 'Hinzufügen'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={openConfirmDialog}
-          onClose={handleCloseConfirmDialog}
-          aria-labelledby="alert-dialog-title"
-          aria-describedby="alert-dialog-description"
-        >
-          <DialogTitle id="alert-dialog-title">{"Passwort löschen bestätigen?"}</DialogTitle>
-          <DialogContent>
-            <Typography id="alert-dialog-description">
-              Bist du sicher, dass du den Passwort-Eintrag für "{passwordToDelete?.website_url}" löschen möchtest?
-            </Typography>
-            {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseConfirmDialog}>Abbrechen</Button>
-            <Button onClick={handleDeletePassword} color="secondary" autoFocus>
-              Löschen
-            </Button>
-          </DialogActions>
-        </Dialog>
-
       </Box>
+
+      <TextField
+        label="Passwörter suchen..."
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchTerm}
+        onChange={handleSearchChange}
+        sx={{ mb: 3 }}
+      />
+
+      {loading && <Typography>Lade Passwörter...</Typography>}
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {!loading && !error && passwords.length === 0 && (
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Noch keine Passwörter gespeichert?
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Beginnen Sie jetzt, Ihre digitalen Anmeldeinformationen sicher zu verwalten.
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleAddPassword}
+          >
+            Erstes Passwort hinzufügen
+          </Button>
+        </Box>
+      )}
+
+      {!loading && !error && passwords.length > 0 && (
+        <TableContainer component={Paper} sx={{ mt: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Website</TableCell>
+                <TableCell>Benutzername</TableCell>
+                <TableCell>Aktionen</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredPasswords.map((password) => (
+                <TableRow key={password.id} onClick={() => handlePasswordClick(password)} sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
+                  <TableCell>{password.website_url}</TableCell>
+                  <TableCell>{password.username}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={(e) => { e.stopPropagation(); handleEditPassword(password); }} color="info">
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={(e) => { e.stopPropagation(); handleDeleteClick(password); }} color="error">
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Detail-Dialogfeld */}
+      <Dialog open={openDetailDialog} onClose={handleCloseDetailDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Passwort Details</DialogTitle>
+        <DialogContent dividers>
+          {currentPassword && (
+            <Box>
+              <Typography variant="subtitle1" component="h2">Website URL:</Typography>
+              <Typography variant="body1" gutterBottom>{currentPassword.website_url}</Typography>
+
+              <Typography variant="subtitle1" component="h2" sx={{ mt: 2 }}>Benutzername:</Typography>
+              <Typography variant="body1" gutterBottom>{currentPassword.username}</Typography>
+
+              <Typography variant="subtitle1" component="h2" sx={{ mt: 2 }}>Passwort:</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{ flexGrow: 1 }}>
+                  {visiblePasswords[currentPassword.id] ? currentPassword.password : '********'}
+                </Typography>
+                <IconButton onClick={() => togglePasswordVisibility(currentPassword.id)} size="small">
+                  {visiblePasswords[currentPassword.id] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                </IconButton>
+              </Box>
+
+              <Typography variant="subtitle1" component="h2" sx={{ mt: 2 }}>Notizen:</Typography>
+              <Typography variant="body1" gutterBottom>{currentPassword.notes || 'Keine Notizen'}</Typography>
+
+              <Typography variant="subtitle1" component="h2" sx={{ mt: 2 }}>Erstellt am:</Typography>
+              <Typography variant="body2" gutterBottom>{new Date(currentPassword.created_at).toLocaleString()}</Typography>
+
+              <Typography variant="subtitle1" component="h2" sx={{ mt: 2 }}>Zuletzt aktualisiert am:</Typography>
+              <Typography variant="body2" gutterBottom>{new Date(currentPassword.updated_at).toLocaleString()}</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => handleEditPassword(currentPassword)}>Bearbeiten</Button>
+          <Button onClick={() => handleDeleteClick(currentPassword)} color="error">Löschen</Button>
+          <Button onClick={handleCloseDetailDialog}>Schließen</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Formular-Dialogfeld (Hinzufügen/Bearbeiten) */}
+      <Dialog open={openFormDialog} onClose={handleCloseFormDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{isEditing ? 'Passwort bearbeiten' : 'Passwort hinzufügen'}</DialogTitle>
+        <DialogContent dividers>
+          {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+          <TextField
+            autoFocus
+            margin="dense"
+            name="website_url"
+            label="Website URL"
+            type="url"
+            fullWidth
+            variant="outlined"
+            value={formData.website_url}
+            onChange={handleFormChange}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            name="username"
+            label="Benutzername"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.username}
+            onChange={handleFormChange}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            name="password"
+            label="Passwort"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.password}
+            onChange={handleFormChange}
+            sx={{ mb: 2 }}
+          />
+          <Button onClick={handleGeneratePassword} variant="outlined" sx={{ mt: 1, mb: 2 }}>
+            Passwort generieren
+          </Button>
+          <TextField
+            margin="dense"
+            name="notes"
+            label="Notizen (Optional)"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            value={formData.notes}
+            onChange={handleFormChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseFormDialog}>Abbrechen</Button>
+          <Button onClick={handleSavePassword} variant="contained" color="primary">
+            {isEditing ? 'Speichern' : 'Hinzufügen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bestätigungsdialogfeld zum Löschen */}
+      <Dialog open={openConfirmDialog} onClose={handleCloseConfirmDialog}>
+        <DialogTitle>Passwort löschen</DialogTitle>
+        <DialogContent>
+          <Typography>Sind Sie sicher, dass Sie dieses Passwort löschen möchten?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirmDialog}>Abbrechen</Button>
+          <Button onClick={handleDeletePassword} color="error" variant="contained">Löschen</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

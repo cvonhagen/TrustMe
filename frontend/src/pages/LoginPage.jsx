@@ -2,8 +2,40 @@ import React, { useState } from 'react';
 import { Container, TextField, Button, Typography, Box, Link, Alert, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, registerUser, verifyTwoFactorLogin } from '../services/api';
+import { loginUser, registerUser, verifyTwoFactorLogin } from '../services/api';
 import { useThemeContext } from '../ThemeContext';
 import { useAuth } from '../AuthContext';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+
+// LoginPage-Komponente für die Benutzeranmeldung und -registrierung.
+const LoginPage = () => {
+  // Zustandsvariablen zur Steuerung des Formulars und der Benutzeroberfläche
+  const [isLogin, setIsLogin] = useState(true); // Schaltet zwischen Login- und Registrierungsansicht um
+  const [username, setUsername] = useState('');     // Zustand für den Benutzernamen
+  const [email, setEmail] = useState('');           // Zustand für die E-Mail-Adresse (nur Registrierung)
+  const [masterPassword, setMasterPassword] = useState(''); // Zustand für das Master-Passwort
+  const [twoFACode, setTwoFACode] = useState('');       // Zustand für den 2FA-Code
+  const [showTwoFAInput, setShowTwoFAInput] = useState(false); // Zustand, ob 2FA-Eingabe angezeigt wird
+  const [tempUsername, setTempUsername] = useState(''); // Temporärer Zustand für den Benutzernamen während des 2FA-Flows
+  const [loginError, setLoginError] = useState(null); // Zustand für Anmelde-/Registrierungsfehler
+
+  // Hooks für Navigation und Kontext-Zugriff
+  const navigate = useNavigate(); // Hook für die Navigation
+  const { login } = useAuth();    // Zugriff auf die Login-Funktion aus dem AuthContext
+  const { toggleColorMode, mode } = useThemeContext(); // Zugriff auf Theme-Funktionen (Hell-/Dunkelmodus)
+
+  // handleLoginSubmit behandelt den Anmeldevorgang.
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault(); // Standardformularübermittlung verhindern
+    setLoginError(null); // Vorherige Fehler zurücksetzen
+
+    try {
+      // API-Aufruf zur Benutzeranmeldung
+      const response = await loginUser({ username, master_password: masterPassword });
+      // Extrahieren der relevanten Daten aus der API-Antwort
+      const { token, two_fa_enabled, salt } = response.data;
+
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
@@ -41,11 +73,56 @@ const LoginPage = () => {
         setTempUsername(username); 
         // Schlüssel ableiten und Token setzen (Vorbereitung für 2FA-Verifizierung)
         await login(username, masterPassword, salt, token); 
+        // Wenn 2FA aktiviert ist: 2FA-Eingabefeld anzeigen und temporären Benutzernamen speichern
+        setShowTwoFAInput(true);
+        setTempUsername(username); 
+        // Schlüssel ableiten und Token setzen (Vorbereitung für 2FA-Verifizierung)
+        await login(username, masterPassword, salt, token); 
       } else {
         // Wenn 2FA nicht aktiviert ist: Benutzer direkt anmelden und zum Dashboard navigieren
         await login(username, masterPassword, salt, token); 
         navigate('/dashboard'); 
+        // Wenn 2FA nicht aktiviert ist: Benutzer direkt anmelden und zum Dashboard navigieren
+        await login(username, masterPassword, salt, token); 
+        navigate('/dashboard'); 
       }
+    } catch (err) {
+      // Fehlerbehandlung bei der Anmeldung
+      setLoginError(err.response?.data?.error || 'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.'); 
+      setShowTwoFAInput(false); // 2FA-Eingabe bei Anmeldefehler verbergen
+    }
+  };
+
+  // handleTwoFASubmit verarbeitet die 2FA-Code-Verifizierung.
+  const handleTwoFASubmit = async (e) => {
+    e.preventDefault(); // Standardformularübermittlung verhindern
+    setLoginError(null); // Vorherige Fehler zurücksetzen
+    try {
+      // API-Aufruf zur Verifizierung des 2FA-Codes
+      await verifyTwoFactorLogin({ username: tempUsername, code: twoFACode });
+      // Bei erfolgreicher 2FA-Verifizierung: Zum Dashboard navigieren (Login sollte bereits erfolgt sein)
+      navigate('/dashboard'); 
+    } catch (err) {
+      // Fehlerbehandlung bei der 2FA-Verifizierung
+      setLoginError(err.response?.data?.error || '2FA-Verifizierung fehlgeschlagen. Ungültiger Code.'); 
+    }
+  };
+
+  // handleRegisterSubmit verarbeitet den Registrierungsvorgang.
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault(); // Standardformularübermittlung verhindern
+    setLoginError(null); // Vorherige Fehler zurücksetzen
+
+    try {
+      // API-Aufruf zur Benutzerregistrierung
+      await registerUser({ username, email, master_password: masterPassword });
+      // Nach erfolgreicher Registrierung zur Login-Ansicht wechseln und Erfolgsmeldung anzeigen
+      setIsLogin(true); 
+      setLoginError('Registrierung erfolgreich! Bitte melden Sie sich jetzt an.'); 
+    } catch (err) {
+      // Fehlerbehandlung bei der Registrierung
+      setLoginError(err.response?.data?.error || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.'); 
+    }
     } catch (err) {
       // Fehlerbehandlung bei der Anmeldung
       setLoginError(err.response?.data?.error || 'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.'); 
@@ -243,6 +320,7 @@ const LoginPage = () => {
     </Paper>
   </Container>
   );
+};
 };
 
 export default LoginPage;

@@ -125,3 +125,18 @@ func (h *TwoFAHandler) VerifyLoginCode(c *fiber.Ctx) error {
 		Salt:         user.Salt, // Include salt for client-side decryption
 	})
 }
+
+// DisableTwoFA handles the request to disable 2FA for the authenticated user.
+func (h *TwoFAHandler) DisableTwoFA(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uint)
+
+	if err := h.TwoFAService.DisableTwoFA(userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to disable 2FA",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "2FA disabled successfully",
+	})
+}

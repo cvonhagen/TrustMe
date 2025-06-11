@@ -3,106 +3,94 @@ package services
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"backend/models"
 	"backend/schemas"
 	"backend/security"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// AuthService handles authentication logic.
+// AuthService behandelt Authentifizierungslogik wie Registrierung und Login.
 type AuthService struct {
 	DB          *gorm.DB
-	UserService *UserService
+	UserService *UserService // Abhängigkeit zum UserService
 }
 
-// NewAuthService creates a new AuthService instance.
+// NewAuthService erstellt eine neue AuthService-Instanz.
 func NewAuthService(db *gorm.DB, userService *UserService) *AuthService {
 	return &AuthService{DB: db, UserService: userService}
 }
 
-// RegisterUser handles user registration.
+// RegisterUser registriert einen neuen Benutzer in der Datenbank.
+// Es hasht das Master-Passwort und speichert den Benutzer.
 func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
-	// Check if user already exists
-	existingUser, err := s.UserService.GetUserByUsername(req.Username)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		// An actual error occurred, not just record not found
-		return fmt.Errorf("error checking existing user: %w", err)
-	}
-	if existingUser != nil {
-		return errors.New("user with this username already exists")
+	// Prüfen, ob der Benutzername oder die E-Mail bereits existiert
+	if existingUser, _ := s.UserService.GetUserByUsername(req.Username); existingUser != nil {
+		return errors.New("Benutzername ist bereits vergeben")
 	}
 
-	// Hash the master password
-	hashedPassword, salt, err := security.HashPassword(req.MasterPassword)
+	// TODO: E-Mail-Existenzprüfung hinzufügen, falls E-Mail eindeutig sein soll
+
+	// Salt generieren (für Frontend-Schlüsselableitung)
+	salt, err := security.GenerateSalt()
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}
 
-	// Create new user model
-	newUser := &models.User{
+	// Master-Passwort hashen (bcrypt generiert seinen eigenen Salt intern)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.MasterPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("Fehler beim Hashen des Master-Passworts: %w", err)
+	}
+
+	// Neuen Benutzer erstellen
+	user := &models.User{
 		Username:             req.Username,
-		HashedMasterPassword: hashedPassword,
-		Salt:                 salt,
-		TwoFAEnabled:         false, // Default to false
+		Email:                req.Email,
+		HashedMasterPassword: string(hashedPassword),
+		Salt:                 salt,  // Dieser Salt ist für das Frontend
+		TwoFAEnabled:         false, // 2FA standardmäßig deaktiviert
 	}
 
-	// Create user in database
-	err = s.UserService.CreateUser(newUser)
-	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+	// Benutzer in der Datenbank speichern
+	if err := s.UserService.CreateUser(user); err != nil {
+		return fmt.Errorf("Fehler beim Erstellen des Benutzers: %w", err)
 	}
 
 	return nil
 }
 
-// LoginUser handles user login and returns a JWT token and user details.
+// LoginUser authentifiziert einen Benutzer anhand seiner Anmeldeinformationen.
+// Bei erfolgreicher Authentifizierung wird ein JWT-Token generiert und die Benutzerdetails zurückgegeben.
 func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginResponse, error) {
-	// Get user by username
+	// Benutzer anhand des Benutzernamens abrufen
 	user, err := s.UserService.GetUserByUsername(req.Username)
-	log.Printf("AuthService.LoginUser: Attempting to get user by username: %s", req.Username) // Debugging
 	if err != nil {
-		log.Printf("AuthService.LoginUser: Error getting user %s: %v", req.Username, err) // Debugging
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("invalid username or password")
-		}
-		return nil, fmt.Errorf("error retrieving user: %w", err)
+		return nil, fmt.Errorf("Fehler beim Abrufen des Benutzers: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("Ungültige Anmeldeinformationen") // Benutzer nicht gefunden
 	}
 
-	log.Printf("AuthService.LoginUser: User found: %s (ID: %d)", user.Username, user.ID) // Debugging: Bestätige, dass der Benutzer gefunden wurde
-
-	// Verify master password
-	match, err := security.VerifyPassword(req.MasterPassword, user.HashedMasterPassword, user.Salt)
-	if err != nil {
-		log.Printf("AuthService.LoginUser: Error verifying password for user %s: %v", user.Username, err) // Debugging
-		return nil, fmt.Errorf("error verifying password: %w", err)
-	}
-	if !match {
-		log.Printf("AuthService.LoginUser: Password mismatch for user: %s", user.Username) // Debugging
-		return nil, errors.New("invalid username or password")
+	// Das bereitgestellte Passwort mit dem gespeicherten Hash vergleichen (ohne den zusätzlichen Salt)
+	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedMasterPassword), []byte(req.MasterPassword)); err != nil {
+		return nil, errors.New("Ungültige Anmeldeinformationen") // Passwort stimmt nicht überein
 	}
 
-	log.Printf("AuthService.LoginUser: Password match for user: %s", user.Username) // Debugging
-
-	// Generate JWT token
+	// JWT-Token generieren
 	token, err := security.GenerateJWTToken(user.ID)
 	if err != nil {
-		log.Printf("AuthService.LoginUser: Error generating token for user %s: %v", user.Username, err) // Debugging
-		return nil, fmt.Errorf("failed to generate JWT token: %w", err)
+		return nil, fmt.Errorf("Fehler beim Generieren des Tokens: %w", err)
 	}
 
-	log.Printf("AuthService.LoginUser: Token generated successfully for user: %s", user.Username) // Debugging
-
-	// Return login response
-	loginResponse := &schemas.LoginResponse{
+	// Login-Antwort zurückgeben
+	return &schemas.LoginResponse{
 		Token:        token,
 		UserID:       user.ID,
 		Username:     user.Username,
 		TwoFAEnabled: user.TwoFAEnabled,
-		Salt:         user.Salt, // Include salt for client-side decryption
-	}
-	log.Printf("AuthService.LoginUser: Returning successful login response for user: %s", user.Username) // Debugging vor Return
-	return loginResponse, nil
+		Salt:         user.Salt,
+	}, nil
 }

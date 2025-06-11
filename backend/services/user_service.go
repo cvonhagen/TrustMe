@@ -2,6 +2,8 @@ package services
 
 import (
 	"backend/models"
+	"backend/schemas"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -53,4 +55,43 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 		return nil, res.Error
 	}
 	return &user, nil // User found, return user and nil error
+}
+
+// UpdateUserProfile updates a user's profile.
+func (s *UserService) UpdateUserProfile(userID uint, req *schemas.UpdateProfileRequest) (*models.User, error) {
+	var user models.User
+	if err := s.DB.First(&user, userID).Error; err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	if req.Username != nil {
+		user.Username = *req.Username
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+
+	// Handle password update separately if needed, as it involves hashing
+	// For now, assuming password changes are handled by a dedicated auth service
+
+	if err := s.DB.Save(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	return &user, nil
+}
+
+// DeleteUserAccount deletes a user's account from the database.
+func (s *UserService) DeleteUserAccount(userID uint) error {
+	// Delete associated passwords first to avoid foreign key constraint issues
+	if err := s.DB.Where("user_id = ?", userID).Delete(&models.Password{}).Error; err != nil {
+		return fmt.Errorf("failed to delete user's passwords: %w", err)
+	}
+
+	// Then delete the user
+	if err := s.DB.Delete(&models.User{}, userID).Error; err != nil {
+		return fmt.Errorf("failed to delete user account: %w", err)
+	}
+
+	return nil
 }

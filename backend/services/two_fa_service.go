@@ -8,66 +8,84 @@ import (
 	"gorm.io/gorm"
 )
 
-// TwoFAService handles 2FA logic.
+// TwoFAService behandelt die Logik der Zwei-Faktor-Authentifizierung (2FA).
 type TwoFAService struct {
-	DB          *gorm.DB
-	UserService *UserService
+	DB          *gorm.DB     // Datenbankverbindung
+	UserService *UserService // Abhängigkeit zum Benutzerdienst
 }
 
-// NewTwoFAService creates a new TwoFAService instance.
+// NewTwoFAService erstellt eine neue TwoFAService-Instanz.
 func NewTwoFAService(db *gorm.DB, userService *UserService) *TwoFAService {
 	return &TwoFAService{DB: db, UserService: userService}
 }
 
-// GenerateTwoFASecret generates a new TOTP secret and returns the secret and the provisioning URL.
+// GenerateTwoFASecret generiert ein neues TOTP-Geheimnis und gibt das Geheimnis und die Provisionierungs-URL zurück.
 func (s *TwoFAService) GenerateTwoFASecret(userID uint) (secret string, provisioningURL string, err error) {
+	// Benutzer anhand der ID abrufen
 	user, err := s.UserService.GetUserByID(userID)
 	if err != nil {
-		return "", "", fmt.Errorf("user not found: %w", err)
+		return "", "", fmt.Errorf("Benutzer nicht gefunden: %w", err)
 	}
 
-	// Generate a new TOTP key
+	// Neues TOTP-Schlüssel generieren
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "TrustMe Password Manager",
-		AccountName: user.Username,
+		Issuer:      "TrustMe Password Manager", // Aussteller der 2FA
+		AccountName: user.Username,              // Benutzername als Account-Name
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate TOTP key: %w", err)
+		return "", "", fmt.Errorf("Fehler beim Generieren des TOTP-Schlüssels: %w", err)
 	}
 
 	secret = key.Secret()
 	provisioningURL = key.URL()
 
-	// Store the secret in the user model (but don't save yet)
+	// Das Geheimnis im Benutzermodell speichern (aber noch nicht speichern)
 	user.TwoFASecret = secret
 
 	return secret, provisioningURL, nil
 }
 
-// VerifyTwoFACode verifies the provided TOTP code against the user's stored secret.
+// VerifyTwoFACode verifiziert den bereitgestellten TOTP-Code anhand des gespeicherten Geheimnisses des Benutzers.
 func (s *TwoFAService) VerifyTwoFACode(userID uint, code string) (bool, error) {
+	// Benutzer anhand der ID abrufen
 	user, err := s.UserService.GetUserByID(userID)
 	if err != nil {
-		return false, fmt.Errorf("user not found: %w", err)
+		return false, fmt.Errorf("Benutzer nicht gefunden: %w", err)
 	}
 
+	// Prüfen, ob 2FA für diesen Benutzer aktiviert ist oder ob das Geheimnis fehlt
 	if !user.TwoFAEnabled || user.TwoFASecret == "" {
-		return false, errors.New("2FA is not enabled for this user")
+		return false, errors.New("2FA ist für diesen Benutzer nicht aktiviert")
 	}
 
+	// TOTP-Code verifizieren
 	valid := totp.Validate(code, user.TwoFASecret)
 
 	return valid, nil
 }
 
-// EnableTwoFA sets the two_fa_enabled flag for the user.
+// EnableTwoFA aktiviert die Zwei-Faktor-Authentifizierung für den Benutzer.
 func (s *TwoFAService) EnableTwoFA(userID uint) error {
+	// Benutzer anhand der ID abrufen
 	user, err := s.UserService.GetUserByID(userID)
 	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
+		return fmt.Errorf("Benutzer nicht gefunden: %w", err)
 	}
 
-	user.TwoFAEnabled = true
-	// Save the user with the updated flag and the generated secret (which should have been stored earlier)
+	user.TwoFAEnabled = true // 2FA-Flag auf true setzen
+	// Benutzer mit aktualisiertem Flag und generiertem Geheimnis speichern (sollte zuvor gespeichert worden sein)
+	return s.DB.Save(user).Error
+}
+
+// DisableTwoFA deaktiviert die Zwei-Faktor-Authentifizierung für den Benutzer.
+func (s *TwoFAService) DisableTwoFA(userID uint) error {
+	// Benutzer anhand der ID abrufen
+	user, err := s.UserService.GetUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("Benutzer nicht gefunden: %w", err)
+	}
+
+	user.TwoFAEnabled = false // 2FA-Flag auf false setzen
+	user.TwoFASecret = ""     // Geheimnis löschen
 	return s.DB.Save(user).Error
 }

@@ -4,8 +4,8 @@ const crypto = require('crypto'); // Node.js built-in crypto module
 const API_BASE_URL = 'http://localhost:3030/api/v1'; // Your backend URL
 const BASE_TEST_PASSWORD = 'TestPassword123!'; // Base password for all test users
 
-const NUM_USERS = 5; // Number of test users to create
-const NUM_PASSWORDS_PER_USER = 20; // Number of password entries per user
+const NUM_USERS = 10; // Anzahl der zu erstellenden Testbenutzer (für 100.000 Datensätze)
+const NUM_PASSWORDS_PER_USER = 10000; // Anzahl der Passworteinträge pro Benutzer (für 100.000 Datensätze)
 
 // PBKDF2 parameters - must match backend/frontend (from backend/security/security.go)
 const pbkdf2Iterations = 250000;
@@ -44,18 +44,11 @@ const encryptData = (data, keyBuffer) => {
 
         const tag = cipher.getAuthTag();
 
-        // Convert to Base64 and ensure compatibility with Go backend RawStdEncoding
-        const encryptedTextBase64 = encrypted.toString('base64');
-        const ivBase64 = iv.toString('base64');
-        const tagBase64 = tag.toString('base64');
-
-        // Remove padding and any non-Base64 characters (optional, but good practice)
-        const cleanBase64 = (str) => str.replace(/[^A-Za-z0-9+/]/g, '').replace(/=+\$/, '');
-
+        // Convert to Base64 (Node.js toString('base64') produces standard Base64 with padding)
         return {
-            encryptedText: cleanBase64(encryptedTextBase64),
-            iv: cleanBase64(ivBase64),
-            tag: cleanBase64(tagBase64)
+            encryptedText: encrypted,
+            iv: iv.toString('base64'),
+            tag: tag.toString('base64')
         };
     } catch (error) {
         console.error("Error encrypting data:", error);
@@ -78,6 +71,7 @@ const generateData = async () => {
             console.log('Registering user...');
             await axios.post(`${API_BASE_URL}/auth/register`, {
                 username: username,
+                email: `${username}@example.com`,
                 password: password,
             });
             console.log('User registered successfully.');
@@ -134,10 +128,11 @@ const generateData = async () => {
                 'Content-Type': 'application/json',
             };
 
-            for (const entry of passwordEntries) {
-                // Sending entries one by one. Can be optimized for bulk insertion if backend supports.
-                await axios.post(`${API_BASE_URL}/passwords`, entry, { headers });
-                // console.log(`Password entry for ${entry.website_url} sent.`); // Uncomment for detailed progress
+            const BATCH_SIZE = 500; // Batch-Größe für Passwörter
+            for (let k = 0; k < passwordEntries.length; k += BATCH_SIZE) {
+                const batch = passwordEntries.slice(k, k + BATCH_SIZE);
+                await axios.post(`${API_BASE_URL}/passwords/batch`, { passwords: batch }, { headers });
+                console.log(`Sent batch ${Math.floor(k / BATCH_SIZE) + 1} for ${username}.`);
             }
             console.log(`All password entries for ${username} sent successfully.`);
 

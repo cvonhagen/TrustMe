@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"backend/models"
 	"backend/schemas"
 	"backend/services"
-	"encoding/base64"
 	"errors"
 	"strconv"
 
@@ -12,261 +10,276 @@ import (
 	"gorm.io/gorm"
 )
 
-// PasswordHandler handles password related requests.
+// PasswordHandler behandelt passwortbezogene Anfragen.
 type PasswordHandler struct {
-	PasswordService *services.PasswordService
-	UserService     *services.UserService // Needed to potentially get user info for context
+	PasswordService *services.PasswordService // Dienst für Passwortoperationen
+	UserService     *services.UserService     // Dienst für Benutzeroperationen, falls benötigt
 }
 
-// NewPasswordHandler creates a new PasswordHandler instance.
+// NewPasswordHandler erstellt eine neue PasswordHandler-Instanz.
 func NewPasswordHandler(passwordService *services.PasswordService, userService *services.UserService) *PasswordHandler {
 	return &PasswordHandler{PasswordService: passwordService, UserService: userService}
 }
 
-// CreatePassword handles creating a new password entry.
+// CreatePassword verarbeitet die Erstellung eines neuen Passwort-Eintrags.
 func (h *PasswordHandler) CreatePassword(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
 	userID := c.Locals("userID").(uint)
 
-	var req schemas.PasswordCreate
+	var req schemas.CreatePasswordRequest
+	// Anfragekörper parsen
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
+			"error": "Ungültiger Anfragekörper",
 		})
 	}
 
-	password := &models.Password{
-		UserID:            userID,
-		WebsiteURL:        req.WebsiteURL,
-		EncryptedUsername: req.EncryptedUsername,
-		UsernameIV:        req.UsernameIV,
-		UsernameTag:       req.UsernameTag,
-		// Assuming EncryptedPassword from schema is base64 encoded string
-		// EncryptedPassword: []byte(req.EncryptedPassword), // Will need base64 decode
-		PasswordIV:     req.PasswordIV,
-		PasswordTag:    req.PasswordTag,
-		EncryptedNotes: req.EncryptedNotes,
-		NotesIV:        req.NotesIV,
-		NotesTag:       req.NotesTag,
-	}
-
-	// Decode base64 encoded fields
-	var err error
-	if password.EncryptedPassword, err = base64.RawStdEncoding.DecodeString(req.EncryptedPassword); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid EncryptedPassword encoding"})
-	}
-
-	if err := h.PasswordService.CreatePassword(password); err != nil {
+	// Passwort-Dienst aufrufen, um das Passwort zu erstellen
+	password, err := h.PasswordService.CreatePassword(userID, &req)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create password entry",
+			"error": "Fehler beim Erstellen des Passwort-Eintrags",
 		})
 	}
 
+	// Antwort erstellen
 	response := schemas.PasswordResponse{
-		ID:     password.ID,
-		UserID: password.UserID,
-		PasswordBase: schemas.PasswordBase{
-			WebsiteURL:        password.WebsiteURL,
-			EncryptedUsername: password.EncryptedUsername,
-			UsernameIV:        password.UsernameIV,
-			UsernameTag:       password.UsernameTag,
-			// Encode back to base64 for response if needed, or send as string if client expects it
-			EncryptedPassword: base64.RawStdEncoding.EncodeToString(password.EncryptedPassword), // Encode back to base64 for response
-			PasswordIV:        password.PasswordIV,
-			PasswordTag:       password.PasswordTag,
-			EncryptedNotes:    password.EncryptedNotes,
-			NotesIV:           password.NotesIV,
-			NotesTag:          password.NotesTag,
-		},
-		CreatedAt: password.CreatedAt.String(),
-		UpdatedAt: password.UpdatedAt.String(),
+		ID:                password.ID,
+		UserID:            password.UserID,
+		WebsiteURL:        password.WebsiteURL,
+		EncryptedUsername: password.EncryptedUsername,
+		UsernameIV:        password.UsernameIV,
+		UsernameTag:       password.UsernameTag,
+		EncryptedPassword: password.EncryptedPassword,
+		PasswordIV:        password.PasswordIV,
+		PasswordTag:       password.PasswordTag,
+		EncryptedNotes:    password.EncryptedNotes,
+		NotesIV:           password.NotesIV,
+		NotesTag:          password.NotesTag,
+		CreatedAt:         password.CreatedAt,
+		UpdatedAt:         password.UpdatedAt,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(response)
 }
 
-// GetPasswords handles retrieving all password entries for the authenticated user.
-func (h *PasswordHandler) GetPasswords(c *fiber.Ctx) error {
+// BatchCreatePasswords verarbeitet die Erstellung mehrerer Passwort-Einträge in einem Batch.
+func (h *PasswordHandler) BatchCreatePasswords(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
 	userID := c.Locals("userID").(uint)
 
-	passwords, err := h.PasswordService.GetPasswordsByUserID(userID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve password entries",
+	var req schemas.BatchCreatePasswordRequest
+	// Anfragekörper parsen
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Ungültiger Anfragekörper für Batch-Erstellung",
 		})
 	}
 
-	// Convert models to response schemas
+	// Batch-Passwörter über den Dienst erstellen
+	passwords, err := h.PasswordService.BatchCreatePasswords(userID, &req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler beim Batch-Erstellen der Passwörter",
+		})
+	}
+
+	// Modelle in Antwort-Schemata konvertieren
 	response := []schemas.PasswordResponse{}
 	for _, password := range passwords {
 		response = append(response, schemas.PasswordResponse{
-			ID:     password.ID,
-			UserID: password.UserID,
-			PasswordBase: schemas.PasswordBase{
-				WebsiteURL:        password.WebsiteURL,
-				EncryptedUsername: password.EncryptedUsername,
-				UsernameIV:        password.UsernameIV,
-				UsernameTag:       password.UsernameTag,
-				EncryptedPassword: base64.RawStdEncoding.EncodeToString(password.EncryptedPassword), // Encode back to base64
-				PasswordIV:        password.PasswordIV,
-				PasswordTag:       password.PasswordTag,
-				EncryptedNotes:    password.EncryptedNotes,
-				NotesIV:           password.NotesIV,
-				NotesTag:          password.NotesTag,
-			},
-			CreatedAt: password.CreatedAt.String(),
-			UpdatedAt: password.UpdatedAt.String(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(response)
-}
-
-// GetPassword handles retrieving a single password entry by ID.
-func (h *PasswordHandler) GetPassword(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
-	passwordIDStr := c.Params("id")
-
-	passwordID, err := strconv.ParseUint(passwordIDStr, 10, 64)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid password ID",
-		})
-	}
-
-	password, err := h.PasswordService.GetPasswordByID(uint(passwordID), userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": "Password entry not found",
-			})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve password entry",
-		})
-	}
-
-	response := schemas.PasswordResponse{
-		ID:     password.ID,
-		UserID: password.UserID,
-		PasswordBase: schemas.PasswordBase{
+			ID:                password.ID,
+			UserID:            password.UserID,
 			WebsiteURL:        password.WebsiteURL,
 			EncryptedUsername: password.EncryptedUsername,
 			UsernameIV:        password.UsernameIV,
 			UsernameTag:       password.UsernameTag,
-			EncryptedPassword: base64.RawStdEncoding.EncodeToString(password.EncryptedPassword), // Encode back to base64
+			EncryptedPassword: password.EncryptedPassword,
 			PasswordIV:        password.PasswordIV,
 			PasswordTag:       password.PasswordTag,
 			EncryptedNotes:    password.EncryptedNotes,
 			NotesIV:           password.NotesIV,
 			NotesTag:          password.NotesTag,
-		},
-		CreatedAt: password.CreatedAt.String(),
-		UpdatedAt: password.UpdatedAt.String(),
+			CreatedAt:         password.CreatedAt,
+			UpdatedAt:         password.UpdatedAt,
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(response)
+}
+
+// GetPasswords verarbeitet das Abrufen aller Passwort-Einträge für den authentifizierten Benutzer.
+func (h *PasswordHandler) GetPasswords(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
+	userID := c.Locals("userID").(uint)
+
+	// Passwörter über den Dienst abrufen
+	passwords, err := h.PasswordService.GetPasswordsByUserID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler beim Abrufen der Passwort-Einträge",
+		})
+	}
+
+	// Modelle in Antwort-Schemata konvertieren
+	response := []schemas.PasswordResponse{}
+	for _, password := range passwords {
+		response = append(response, schemas.PasswordResponse{
+			ID:                password.ID,
+			UserID:            password.UserID,
+			WebsiteURL:        password.WebsiteURL,
+			EncryptedUsername: password.EncryptedUsername,
+			UsernameIV:        password.UsernameIV,
+			UsernameTag:       password.UsernameTag,
+			EncryptedPassword: password.EncryptedPassword,
+			PasswordIV:        password.PasswordIV,
+			PasswordTag:       password.PasswordTag,
+			EncryptedNotes:    password.EncryptedNotes,
+			NotesIV:           password.NotesIV,
+			NotesTag:          password.NotesTag,
+			CreatedAt:         password.CreatedAt,
+			UpdatedAt:         password.UpdatedAt,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-// UpdatePassword handles updating an existing password entry.
-func (h *PasswordHandler) UpdatePassword(c *fiber.Ctx) error {
+// GetPassword verarbeitet das Abrufen eines einzelnen Passwort-Eintrags nach ID.
+func (h *PasswordHandler) GetPassword(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
 	userID := c.Locals("userID").(uint)
+	// Passwort-ID aus den Parametern abrufen
 	passwordIDStr := c.Params("id")
 
+	// Passwort-ID in uint64 konvertieren
 	passwordID, err := strconv.ParseUint(passwordIDStr, 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid password ID",
+			"error": "Ungültige Passwort-ID",
 		})
 	}
 
-	var req schemas.PasswordBase // Use PasswordBase for update request
+	// Passwort über den Dienst abrufen
+	password, err := h.PasswordService.GetPasswordByID(uint(passwordID), userID)
+	if err != nil {
+		// Fehlerbehandlung für nicht gefundenen Eintrag
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "Passwort-Eintrag nicht gefunden",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler beim Abrufen des Passwort-Eintrags",
+		})
+	}
+
+	// Antwort erstellen
+	response := schemas.PasswordResponse{
+		ID:                password.ID,
+		UserID:            password.UserID,
+		WebsiteURL:        password.WebsiteURL,
+		EncryptedUsername: password.EncryptedUsername,
+		UsernameIV:        password.UsernameIV,
+		UsernameTag:       password.UsernameTag,
+		EncryptedPassword: password.EncryptedPassword,
+		PasswordIV:        password.PasswordIV,
+		PasswordTag:       password.PasswordTag,
+		EncryptedNotes:    password.EncryptedNotes,
+		NotesIV:           password.NotesIV,
+		NotesTag:          password.NotesTag,
+		CreatedAt:         password.CreatedAt,
+		UpdatedAt:         password.UpdatedAt,
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+// UpdatePassword verarbeitet die Aktualisierung eines bestehenden Passwort-Eintrags.
+func (h *PasswordHandler) UpdatePassword(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
+	userID := c.Locals("userID").(uint)
+	// Passwort-ID aus den Parametern abrufen
+	passwordIDStr := c.Params("id")
+
+	// Passwort-ID in uint64 konvertieren
+	passwordID, err := strconv.ParseUint(passwordIDStr, 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Ungültige Passwort-ID",
+		})
+	}
+
+	var req schemas.UpdatePasswordRequest
+	// Anfragekörper parsen
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
+			"error": "Ungültiger Anfragekörper",
 		})
 	}
 
-	// Get the existing password entry
-	password, err := h.PasswordService.GetPasswordByID(uint(passwordID), userID)
+	// Passwort über den Dienst aktualisieren
+	updatedPassword, err := h.PasswordService.UpdatePassword(uint(passwordID), userID, &req)
 	if err != nil {
+		// Fehlerbehandlung für nicht gefundenen Eintrag
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": "Password entry not found",
+				"error": "Passwort-Eintrag nicht gefunden",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve password entry",
+			"error": "Fehler beim Aktualisieren des Passwort-Eintrags",
 		})
 	}
 
-	// Update fields from the request
-	password.WebsiteURL = req.WebsiteURL
-	password.EncryptedUsername = req.EncryptedUsername
-	password.UsernameIV = req.UsernameIV
-	password.UsernameTag = req.UsernameTag
-	// Decode base64 encoded password
-	if password.EncryptedPassword, err = base64.RawStdEncoding.DecodeString(req.EncryptedPassword); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid EncryptedPassword encoding"})
-	}
-	password.PasswordIV = req.PasswordIV
-	password.PasswordTag = req.PasswordTag
-	password.EncryptedNotes = req.EncryptedNotes
-	password.NotesIV = req.NotesIV
-	password.NotesTag = req.NotesTag
-
-	// Save the updated entry
-	if err := h.PasswordService.UpdatePassword(password); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to update password entry",
-		})
-	}
-
+	// Antwort erstellen
 	response := schemas.PasswordResponse{
-		ID:     password.ID,
-		UserID: password.UserID,
-		PasswordBase: schemas.PasswordBase{
-			WebsiteURL:        password.WebsiteURL,
-			EncryptedUsername: password.EncryptedUsername,
-			UsernameIV:        password.UsernameIV,
-			UsernameTag:       password.UsernameTag,
-			EncryptedPassword: base64.RawStdEncoding.EncodeToString(password.EncryptedPassword), // Encode back to base64
-			PasswordIV:        password.PasswordIV,
-			PasswordTag:       password.PasswordTag,
-			EncryptedNotes:    password.EncryptedNotes,
-			NotesIV:           password.NotesIV,
-			NotesTag:          password.NotesTag,
-		},
-		CreatedAt: password.CreatedAt.String(),
-		UpdatedAt: password.UpdatedAt.String(),
+		ID:                updatedPassword.ID,
+		UserID:            updatedPassword.UserID,
+		WebsiteURL:        updatedPassword.WebsiteURL,
+		EncryptedUsername: updatedPassword.EncryptedUsername,
+		UsernameIV:        updatedPassword.UsernameIV,
+		UsernameTag:       updatedPassword.UsernameTag,
+		EncryptedPassword: updatedPassword.EncryptedPassword,
+		PasswordIV:        updatedPassword.PasswordIV,
+		PasswordTag:       updatedPassword.PasswordTag,
+		EncryptedNotes:    updatedPassword.EncryptedNotes,
+		NotesIV:           updatedPassword.NotesIV,
+		NotesTag:          updatedPassword.NotesTag,
+		CreatedAt:         updatedPassword.CreatedAt,
+		UpdatedAt:         updatedPassword.UpdatedAt,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-// DeletePassword handles deleting a password entry by ID.
+// DeletePassword verarbeitet das Löschen eines Passwort-Eintrags.
 func (h *PasswordHandler) DeletePassword(c *fiber.Ctx) error {
+	// Benutzer-ID aus dem Kontext abrufen
 	userID := c.Locals("userID").(uint)
+	// Passwort-ID aus den Parametern abrufen
 	passwordIDStr := c.Params("id")
 
+	// Passwort-ID in uint64 konvertieren
 	passwordID, err := strconv.ParseUint(passwordIDStr, 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid password ID",
+			"error": "Ungültige Passwort-ID",
 		})
 	}
 
+	// Passwort über den Dienst löschen
 	if err := h.PasswordService.DeletePassword(uint(passwordID), userID); err != nil {
+		// Fehlerbehandlung für nicht gefundenen Eintrag
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": "Password entry not found",
+				"error": "Passwort-Eintrag nicht gefunden",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to delete password entry",
+			"error": "Fehler beim Löschen des Passwort-Eintrags",
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Password entry deleted successfully",
-	})
+	return c.Status(fiber.StatusNoContent).Send(nil)
 }

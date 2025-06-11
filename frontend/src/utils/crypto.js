@@ -1,8 +1,10 @@
-import CryptoJS from 'crypto-js';
-// import 'crypto-js/lib-typedarrays'; // Könnte für WordArray benötigt werden - Mit Web Crypto API nicht mehr nötig
-// import 'crypto-js/scrypt'; // Korrigierter expliziter Import für Scrypt - Nicht mehr nötig
-// import argon2 from 'argon2-browser'; // Importiere die argon2-browser Bibliothek - Entferne dies
-// import loadArgon2idWasm from 'argon2id'; // Importiere die argon2id Bibliothek - Entferne dies
+/* eslint-disable no-useless-catch */
+// Entferne den CryptoJS Import
+// import CryptoJS from 'crypto-js';
+// Importiere die benötigten Module von crypto-js nicht mehr
+// import 'crypto-js/aes';
+// import 'crypto-js/mode-gcm';
+// import 'crypto-js/enc-base64';
 
 // Funktion zur Ableitung eines Schlüssels aus dem Master-Passwort und Salt unter Verwendung der Web Crypto API (PBKDF2)
 // Muss dieselben Parameter (Salt, Iterationen, Schlüssellänge, Hash) verwenden wie das Backend
@@ -28,7 +30,7 @@ export const deriveKeyFromPassword = async (password, saltBase64) => {
     );
 
     // Leite den Schlüssel mit PBKDF2 ab
-    const derivedKeyBuffer = await crypto.subtle.deriveBits(
+    const derivedKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
         salt: saltBuffer,
@@ -36,17 +38,15 @@ export const deriveKeyFromPassword = async (password, saltBase64) => {
         hash: hashAlgorithm,
       },
       keyMaterial,
-      keyLength * 8 // keyLength in Bits
+      {
+        name: 'AES-GCM',
+        length: keyLength * 8, // Schlüssellänge in Bits
+      },
+      false, // Nicht extrahierbar
+      ['encrypt', 'decrypt'] // Für Verschlüsselung und Entschlüsselung verwendbar
     );
 
-    // Konvertiere den ArrayBuffer zu einem Uint8Array
-    const derivedKeyBytes = new Uint8Array(derivedKeyBuffer);
-
-    // Konvertiere das Uint8Array zu einem WordArray (CryptoJS Format) für Kompatibilität mit bestehenden AES-GCM Funktionen
-    // Hinweis: Idealerweise würden wir auch AES-GCM zur Web Crypto API oder einer anderen Bibliothek migrieren
-    const derivedKeyWordArray = CryptoJS.lib.WordArray.create(derivedKeyBytes);
-
-    return derivedKeyWordArray;
+    return derivedKey; // Gebe direkt den CryptoKey zurück
 
   } catch (error) {
     console.error("Fehler beim Ableiten des Schlüssels:", error);
@@ -54,81 +54,79 @@ export const deriveKeyFromPassword = async (password, saltBase64) => {
   }
 };
 
-// Funktion zur Entschlüsselung von Daten (AES-GCM)
-// Benötigt den abgeleiteten Schlüssel, den verschlüsselten Text, IV und Tag
-export const decryptData = (encryptedTextBase64, ivBase64, tagBase64, key) => {
+// Funktion zur Verschlüsselung von Daten (AES-GCM) mit Web Crypto API
+export const encryptData = async (data, key) => {
   try {
-    const iv = CryptoJS.enc.Base64.parse(ivBase64);
-    const ciphertext = CryptoJS.enc.Base64.parse(encryptedTextBase64);
-    const tag = CryptoJS.enc.Base64.parse(tagBase64);
+    // Generiere einen zufälligen IV (Initialization Vector) - 12 Bytes für AES-GCM
+    const iv = crypto.getRandomValues(new Uint8Array(12));
 
-    // Kombiniere Chiffretext und Tag für das CryptoJS AES-GCM Format
-    // CryptoJS legt den Tag am Ende des Chiffretext WordArray ab
-    const  ciphertextWithTag = CryptoJS.lib.WordArray.create(
-      ciphertext.words.concat(tag.words),
-      ciphertext.sigBytes + tag.sigBytes
-    );
+    // Daten in ArrayBuffer konvertieren
+    const encoded = new TextEncoder().encode(data);
 
-    // Erstelle CipherParams Objekt
-    const cipherParams = CryptoJS.lib.CipherParams.create({
-      ciphertext: ciphertextWithTag,
-      iv: iv // Füge auch IV in CipherParams ein
-      // salt könnte hier auch benötigt werden, falls bei der Verschlüsselung verwendet
-    });
-
-    const decrypted = CryptoJS.AES.decrypt(
-      cipherParams,
-      key,
+    // Verschlüssele die Daten mit AES-GCM
+    const ciphertext = await crypto.subtle.encrypt(
       {
-        mode: CryptoJS.mode.GCM,
-        padding: CryptoJS.pad.NoPadding
-        // Die Authentifizierungsprüfung wird implizit von der Entschlüsselungsfunktion im GCM-Modus durchgeführt
-      }
+        name: 'AES-GCM',
+        iv: iv,
+        tagLength: 128, // Der Standardwert für den Authentifizierungs-Tag ist 128 Bits (16 Bytes)
+      },
+      key, // Dein abgeleiteter CryptoKey
+      encoded
     );
 
-    return decrypted.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    console.error("Fehler beim Entschlüsseln von Daten:", error);
-    // Abhängig vom Fehler (z.B. ungültiger Tag) könnte dies auf einen falschen Schlüssel/Daten hindeuten
-    throw new Error("Fehler beim Entschlüsseln von Daten.");
-  }
-};
+    // Der verschlüsselte Text enthält den Chiffretext und den Tag am Ende.
+    // Wir müssen den Tag manuell extrahieren, da `encrypt` den Tag als Teil des ciphertext zurückgibt.
+    const tagLengthBytes = 16; // 128 Bits = 16 Bytes
+    const encryptedBytes = new Uint8Array(ciphertext);
+    const encryptedText = encryptedBytes.slice(0, encryptedBytes.length - tagLengthBytes);
+    const authTag = encryptedBytes.slice(encryptedBytes.length - tagLengthBytes);
 
-// Funktion zur Verschlüsselung von Daten (AES-GCM)
-export const encryptData = (data, key) => {
-  try {
-    // Generiere einen zufälligen IV (Initialization Vector)
-    const iv = CryptoJS.lib.WordArray.random(12); // 96 Bits für GCM
-
-    // Verschlüssele die Daten
-    const encrypted = CryptoJS.AES.encrypt(data, key, {
-      iv: iv,
-      mode: CryptoJS.mode.GCM,
-      padding: CryptoJS.pad.NoPadding
-    });
-
-    // Extrahiere den Tag aus dem verschlüsselten Ergebnis
-    // In CryptoJS GCM wird der Tag am Ende des ciphertext gespeichert
-    const tag = CryptoJS.lib.WordArray.create(
-      encrypted.ciphertext.words.slice(-4), // Letzte 4 Wörter sind der Tag
-      16 // 128 Bits
-    );
-
-    // Entferne den Tag aus dem ciphertext
-    const ciphertext = CryptoJS.lib.WordArray.create(
-      encrypted.ciphertext.words.slice(0, -4),
-      encrypted.ciphertext.sigBytes - 16
-    );
-
-    // Konvertiere alles zu Base64 für die Übertragung
+    // Konvertiere alles zu Base64 für die Speicherung/Übertragung
     return {
-      encryptedText: CryptoJS.enc.Base64.stringify(ciphertext),
-      iv: CryptoJS.enc.Base64.stringify(iv),
-      tag: CryptoJS.enc.Base64.stringify(tag)
+      encryptedText: btoa(String.fromCharCode(...encryptedText)),
+      iv: btoa(String.fromCharCode(...iv)),
+      tag: btoa(String.fromCharCode(...authTag)),
     };
   } catch (error) {
     console.error("Fehler beim Verschlüsseln von Daten:", error);
     throw new Error("Fehler beim Verschlüsseln von Daten.");
+  }
+};
+
+// Funktion zur Entschlüsselung von Daten (AES-GCM) mit Web Crypto API
+export const decryptData = async (encryptedTextBase64, ivBase64, tagBase64, key) => {
+  try {
+    console.log('DEBUG (decryptData): encryptedTextBase64:', encryptedTextBase64);
+    console.log('DEBUG (decryptData): ivBase64:', ivBase64);
+    console.log('DEBUG (decryptData): tagBase64:', tagBase64);
+    console.log('DEBUG (decryptData): key:', key); // Dies sollte ein CryptoKey-Objekt sein
+
+    // Konvertiere Base64 zurück zu Uint8Arrays
+    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    const encryptedText = Uint8Array.from(atob(encryptedTextBase64), c => c.charCodeAt(0));
+    const tag = Uint8Array.from(atob(tagBase64), c => c.charCodeAt(0));
+
+    // Kombiniere verschlüsselten Text und Tag für die Entschlüsselung
+    const combined = new Uint8Array(encryptedText.length + tag.length);
+    combined.set(encryptedText);
+    combined.set(tag, encryptedText.length);
+
+    // Entschlüssele die Daten mit AES-GCM
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv,
+        tagLength: 128, // Der Standardwert für den Authentifizierungs-Tag ist 128 Bits
+      },
+      key, // Dein abgeleiteter CryptoKey
+      combined
+    );
+
+    // Konvertiere den ArrayBuffer zurück zu einer Zeichenkette
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error("Fehler beim Entschlüsseln von Daten:", error);
+    throw new Error("Fehler beim Entschlüsseln von Daten.");
   }
 };
 

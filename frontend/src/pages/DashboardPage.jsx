@@ -18,6 +18,20 @@ const DashboardPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [currentPassword, setCurrentPassword] = useState(null);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  
+  // Funktion zum Generieren eines sicheren Passworts
+  const generatePassword = () => {
+    const length = 16;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    setGeneratedPassword(password);
+    setFormData(prev => ({ ...prev, password: password }));
+  };
 
   const [openFormDialog, setOpenFormDialog] = useState(false);
   const [formData, setFormData] = useState({
@@ -265,7 +279,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
       <Box sx={{ my: 4, mx: 'auto', width: '100%' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>
@@ -287,14 +301,14 @@ const DashboardPage = () => {
           <Button variant="contained" color="primary" onClick={handleAddPassword} sx={{ mt: 2 }}>
             Passwort hinzufügen
           </Button>
-          <TableContainer sx={{ mt: 2 }}>
-            <Table aria-label="Passworttabelle">
+          <TableContainer component={Paper} sx={{ mt: 3 }}>
+            <Table>
               <TableHead>
-                <TableRow>
-                  <TableCell>Website</TableCell>
-                  <TableCell>Benutzername</TableCell>
-                  <TableCell>Passwort</TableCell>
-                  <TableCell align="right">Aktionen</TableCell>
+                <TableRow sx={{ backgroundColor: 'primary.main' }}>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Website</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Benutzername</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Passwort</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -308,21 +322,13 @@ const DashboardPage = () => {
                     </TableCell>
                     <TableCell>{password.username}</TableCell>
                     <TableCell>
-                      {visiblePasswords[password.id] ? (
-                        password.password
-                      ) : (
-                        '********'
-                      )}
+                      {visiblePasswords[password.id] ? password.password : '••••••••'}
                       <IconButton
-                        aria-label="Passwort anzeigen/verbergen"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          togglePasswordVisibility(password.id);
-                        }}
                         size="small"
+                        onClick={() => togglePasswordVisibility(password.id)}
                         sx={{ ml: 1 }}
                       >
-                        {visiblePasswords[password.id] ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                        {visiblePasswords[password.id] ? <VisibilityOffIcon /> : <VisibilityIcon />}
                       </IconButton>
                     </TableCell>
                     <TableCell align="right">
@@ -396,8 +402,8 @@ const DashboardPage = () => {
           </DialogActions>
         </Dialog>
 
-        <Dialog open={openFormDialog} onClose={handleCloseFormDialog}>
-          <DialogTitle>{isEditing ? 'Passwort bearbeiten' : 'Passwort hinzufügen'}</DialogTitle>
+        <Dialog open={openFormDialog} onClose={handleCloseFormDialog} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+          <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>{isEditing ? 'Passwort bearbeiten' : 'Neues Passwort hinzufügen'}</DialogTitle>
           <DialogContent>
             {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
             <TextField
@@ -427,19 +433,38 @@ const DashboardPage = () => {
               error={!formData.username && formError !== null}
               helperText={!formData.username && formError !== null ? "Benutzername ist erforderlich" : ""}
             />
-            <TextField
-              margin="dense"
-              name="password"
-              label="Passwort"
-              type="password"
-              fullWidth
-              variant="outlined"
-              value={formData.password}
-              onChange={handleFormChange}
-              required
-              error={!formData.password && formError !== null}
-              helperText={!formData.password && formError !== null ? "Passwort ist erforderlich" : ""}
-            />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                margin="dense"
+                name="password"
+                label="Passwort"
+                type={visiblePasswords['form'] ? 'text' : 'password'}
+                fullWidth
+                variant="outlined"
+                value={formData.password}
+                onChange={handleFormChange}
+                required
+                error={!formData.password && formError !== null}
+                helperText={!formData.password && formError !== null ? "Passwort ist erforderlich" : ""}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      onClick={() => togglePasswordVisibility('form')}
+                      edge="end"
+                    >
+                      {visiblePasswords['form'] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  ),
+                }}
+              />
+              <Button
+                variant="contained"
+                onClick={generatePassword}
+                sx={{ mt: 2 }}
+              >
+                Generieren
+              </Button>
+            </Box>
             <TextField
               margin="dense"
               name="notes"
@@ -487,4 +512,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage; 
+export default DashboardPage;

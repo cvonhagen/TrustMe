@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { deriveKeyFromPassword } from './utils/crypto'; // Import the key derivation function
 import { setAuthToken } from './services/api'; // Korrigierter Importpfad
 import { useThemeContext } from './ThemeContext';
+import api from './services/api'; // Implied import for the new loadAuthStatus function
 
 const AuthContext = createContext({
   user: null,
@@ -9,6 +10,7 @@ const AuthContext = createContext({
   login: async (username, masterPassword, saltBase64, token) => {}, // Method to handle login and key derivation
   logout: () => {}, // Method to handle logout
   isAuthenticated: false,
+  is2FAVerified: false, // Add is2FAVerified to context
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -17,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [encryptionKey, setEncryptionKey] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [is2FAVerified, setIs2FAVerified] = useState(false); // Add is2FAVerified state
 
   // Funktion zum Laden des Authentifizierungsstatus aus dem Local Storage
   const loadAuthStatus = async () => {
@@ -27,9 +30,19 @@ export const AuthProvider = ({ children }) => {
     if (storedToken) {
       setAuthToken(storedToken); // Setze den Token in api.js
       console.log('AuthContext: setAuthToken called with storedToken.'); // Debugging
-      // In einer Produktions-App MUSS der Token gegen das Backend validiert und Benutzerdetails geladen werden!
-      setUser({}); // Setze einen Platzhalter-Benutzer, um isAuthenticated auf true zu setzen
-      console.log('AuthContext: Auth token found and set via setAuthToken.');
+      try {
+        // Führen Sie einen API-Aufruf aus, um den Token zu validieren und Benutzerdetails zu laden
+        const response = await api.get('/auth/me'); // Beispiel-Endpunkt, anpassen falls nötig
+        setUser(response.data); // Setzen Sie die tatsächlichen Benutzerdaten
+        setIs2FAVerified(true); // Setze auf true, wenn der Token erfolgreich validiert wurde
+        console.log('AuthContext: User data loaded and token validated successfully.');
+      } catch (error) {
+        console.error('AuthContext: Token validation failed or user data could not be loaded:', error);
+        // Token ist ungültig oder abgelaufen, den Benutzer abmelden
+        setAuthToken(null); // Sicherstellen, dass der Token gelöscht wird
+        setUser(null); // Sicherstellen, dass der Benutzerstatus zurückgesetzt wird
+        localStorage.removeItem('access_token'); // Auch aus dem localStorage entfernen
+      }
     } else {
       setAuthToken(null); // Stelle sicher, dass der Token in api.js null ist
       setUser(null); // Kein Token im localStorage
@@ -61,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       console.log('AuthContext: setAuthToken called with token:', token); // Debugging
 
       setUser({ username }); // Setze den Benutzerstatus
+      setIs2FAVerified(true); // Setze auf true nach erfolgreichem Login
 
       console.log('AuthContext: User and token state updated after login.'); // Debugging
 
@@ -69,6 +83,7 @@ export const AuthProvider = ({ children }) => {
       // Handle error
       setEncryptionKey(null);
       setUser(null);
+      setIs2FAVerified(false); // Setze auf false beim Logout
       setAuthToken(null); // Stelle sicher, dass der Token bei Fehlern entfernt wird
       throw error;
     }
@@ -79,6 +94,7 @@ export const AuthProvider = ({ children }) => {
     // Clear authentication state and encryption key
     setUser(null);
     setEncryptionKey(null);
+    setIs2FAVerified(false); // Setze auf false beim Logout
     setAuthToken(null); // Setze Token auf null über die api.js Funktion
     console.log('AuthContext: User logged out, encryption key and token cleared.'); // Debugging
   };
@@ -93,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
   console.log('AuthContext: Rendering AuthContext.Provider. isAuthenticated:', isAuthenticated); // Debugging
   return (
-    <AuthContext.Provider value={{ user, encryptionKey, login, logout, isAuthenticated, loadingAuth }}> {/* loadingAuth zum Value hinzufügen */}
+    <AuthContext.Provider value={{ user, encryptionKey, login, logout, isAuthenticated, loadingAuth, is2FAVerified }}> {/* loadingAuth und is2FAVerified zum Value hinzufügen */}
       {children}
     </AuthContext.Provider>
   );

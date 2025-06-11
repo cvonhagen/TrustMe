@@ -10,7 +10,7 @@ const ThemeContext = createContext({
 export const useThemeContext = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
-  const [mode, setMode] = useState('light');
+  const [mode, setMode] = useState('dark'); // Set dark mode as default
 
   const colorMode = useMemo(
     () => ({
@@ -43,4 +43,4 @@ export const ThemeProvider = ({ children }) => {
       </MuiThemeProvider>
     </ThemeContext.Provider>
   );
-}; 
+};

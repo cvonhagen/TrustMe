@@ -3,6 +3,7 @@ package security
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -14,9 +15,9 @@ import (
 
 const (
 	// PBKDF2 Parameter (sollten mit dem Frontend übereinstimmen)
-	pbkdf2Iterations = 250000 // Number of iterations
-	pbkdf2KeyLen     = 32     // Desired key length in bytes (for AES-256)
-	pbkdf2SaltLen    = 16     // Salt length in bytes
+	pbkdf2Iterations = 310000 // Erhöhte Anzahl der Iterationen für bessere Sicherheit
+	pbkdf2KeyLen     = 32     // Schlüssellänge in Bytes (für AES-256)
+	pbkdf2SaltLen    = 32     // Erhöhte Salt-Länge für bessere Sicherheit
 )
 
 // HashPassword generiert einen PBKDF2 Hash des Passworts mit einem zufälligen Salt.
@@ -39,10 +40,7 @@ func HashPassword(password string) (hash string, salt string, err error) {
 // VerifyPassword vergleicht ein Klartext-Passwort mit einem PBKDF2 Hash.
 // Es erwartet den gespeicherten Hash und das Salt als Base64-kodierte Strings.
 func VerifyPassword(plainPassword string, hashedPassword string, salt string) (bool, error) {
-	log.Printf("VerifyPassword: Starting verification.")                                 // Debugging
-	log.Printf("VerifyPassword: plainPassword (for debugging only!): %s", plainPassword) // Debugging - ACHTUNG SICHERHEITSRISIKO!
-	log.Printf("VerifyPassword: hashedPassword: %s", hashedPassword)                     // Debugging
-	log.Printf("VerifyPassword: salt: %s", salt)                                         // Debugging
+	// Entferne Debug-Logging für sensitive Daten
 
 	// Dekodiere das Salt von Base64
 	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
@@ -60,14 +58,9 @@ func VerifyPassword(plainPassword string, hashedPassword string, salt string) (b
 
 	// Leite den Schlüssel vom Klartext-Passwort mit demselben Salt und denselben Parametern ab
 	comparisonHashBytes := pbkdf2.Key([]byte(plainPassword), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
-	log.Printf("VerifyPassword: Derived hash from plaintext and salt: %s", base64.RawStdEncoding.EncodeToString(comparisonHashBytes)) // Debugging
 
-	// Vergleiche den generierten Hash mit dem gespeicherten Hash
-	// Verwende in der Produktion einen Vergleich mit konstanter Zeit, um Timing-Angriffe abzumildern
-	// Der Einfachheit halber wird hier ein direkter Byte-Vergleich verwendet.
-	// In einer realen Anwendung ziehe die Verwendung von `crypto/subtle.ConstantTimeCompare` in Betracht.
-	match := string(comparisonHashBytes) == string(storedHashBytes)
-	log.Printf("VerifyPassword: Hashes match: %t", match) // Debugging
+	// Verwende einen zeitkonstanten Vergleich, um Timing-Angriffe zu verhindern
+	match := subtle.ConstantTimeCompare(comparisonHashBytes, storedHashBytes) == 1
 	return match, nil
 }
 

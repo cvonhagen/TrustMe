@@ -3,7 +3,6 @@ package security
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -17,7 +16,7 @@ const (
 	// PBKDF2 Parameter (sollten mit dem Frontend übereinstimmen)
 	pbkdf2Iterations = 250000 // Number of iterations
 	pbkdf2KeyLen     = 32     // Desired key length in bytes (for AES-256)
-	pbkdf2SaltLen    = 16     // Salt length in bytes
+	PBKDF2SaltLen    = 16     // Salt length in bytes
 )
 
 // HashPassword generiert einen PBKDF2 Hash des Passworts mit einem gegebenen Salt.
@@ -68,6 +67,16 @@ func VerifyPassword(plainPassword string, hashedPassword string, salt string) (b
 	match := string(comparisonHashBytes) == string(storedHashBytes)
 	log.Printf("VerifyPassword: Hashes match: %t", match) // Debugging
 	return match, nil
+}
+
+// GenerateSalt generates a random salt of a specified length and returns it as a base64 encoded string.
+func GenerateSalt(length int) (string, error) {
+	saltBytes := make([]byte, length)
+	_, err := rand.Read(saltBytes)
+	if err != nil {
+		return "", fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
+	}
+	return base64.RawStdEncoding.EncodeToString(saltBytes), nil
 }
 
 // Hinweis: JWT-Funktionen (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) und die Variable jwtSecretKey befinden sich jetzt in jwt.go

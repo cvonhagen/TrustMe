@@ -81,24 +81,7 @@ export const encryptData = async (plainText, key) => {
   };
 };
 
-// decryptData entschlüsselt AES-GCM verschlüsselte Daten.
-// Erfordert den verschlüsselten Text, IV, Tag (der Teil des verschlüsselten Textes sein sollte) und den Schlüssel.
-export const decryptData = async (encryptedTextBase64, ivBase64, tagBase64, key) => {
-  const encryptedBytes = Uint8Array.from(atob(encryptedTextBase64), c => c.charCodeAt(0));
-  const ivBytes = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
 
-  // Entschlüsseln der Daten
-  const decrypted = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv: ivBytes,
-    },
-    key,
-    encryptedBytes // Beinhaltet den Tag
-  );
-
-  return new TextDecoder().decode(decrypted);
-};
 
 // generatePassword generiert ein zufälliges Passwort basierend auf den angegebenen Kriterien.
 export const generatePassword = (length = 16, includeUppercase = true, includeLowercase = true, includeNumbers = true, includeSymbols = true) => {
@@ -182,4 +165,4 @@ export const decryptData = async (encryptedTextBase64, ivBase64, tagBase64, key)
 };
 
 // Platzhalter für die Verschlüsselung, falls client-seitig benötigt (z.B. vor dem Senden an das Backend)
-// export const encryptData = (data, key) => { ... }; 
+// export const encryptData = (data, key) => { ... };

@@ -66,6 +66,10 @@ func initDB() error {
 
 	DB = db
 
+	// Tabellen löschen und neu erstellen
+	DB.Migrator().DropTable(&models.Password{})
+	DB.Migrator().DropTable(&models.User{})
+
 	// Datenbankmigrationen durchführen
 	// AutoMigrate erstellt oder aktualisiert Tabellen basierend auf den Modelldefinitionen.
 	// Hier werden User- und Password-Tabellen migriert.

@@ -34,7 +34,7 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
 	// TODO: E-Mail-Existenzprüfung hinzufügen, falls E-Mail eindeutig sein soll
 
 	// Salt generieren (für Frontend-Schlüsselableitung)
-	salt, err := security.GenerateSalt()
+	salt, err := security.GenerateSalt(security.PBKDF2SaltLen)
 	if err != nil {
 		return fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}

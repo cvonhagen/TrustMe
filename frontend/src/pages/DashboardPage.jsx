@@ -288,7 +288,6 @@ const DashboardPage = () => {
           <IconButton sx={{ ml: 1 }} onClick={toggleColorMode} color="inherit">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
-        </Box>
       </Box>
 
       <TextField
@@ -319,62 +318,66 @@ const DashboardPage = () => {
           >
             Erstes Passwort hinzufügen
           </Button>
+        </Box>
+      )} {/* Closing the conditional Box for no passwords */}
+
+      {!loading && !error && passwords.length > 0 && (
+        <>
           <TableContainer component={Paper} sx={{ mt: 3 }}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Website</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Benutzername</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Passwort</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Aktionen</TableCell>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'primary.main' }}>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Website</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Benutzername</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Passwort</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Aktionen</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredPasswords.map((password) => (
+                <TableRow
+                  key={password.id}
+                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                >
+                  <TableCell component="th" scope="row">
+                    {password.website_url}
+                  </TableCell>
+                  <TableCell>{password.username}</TableCell>
+                  <TableCell>
+                    {visiblePasswords[password.id] ? password.password : '••••••••'}
+                    <IconButton
+                      size="small"
+                      onClick={() => togglePasswordVisibility(password.id)}
+                      sx={{ ml: 1 }}
+                    >
+                      {visiblePasswords[password.id] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </TableCell>
+                  <TableCell align="right">
+                    <IconButton
+                      aria-label="bearbeiten"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleEditPassword(password);
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      aria-label="löschen"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteClick(password);
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredPasswords.map((password) => (
-                  <TableRow
-                    key={password.id}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell component="th" scope="row">
-                      {password.website_url}
-                    </TableCell>
-                    <TableCell>{password.username}</TableCell>
-                    <TableCell>
-                      {visiblePasswords[password.id] ? password.password : '••••••••'}
-                      <IconButton
-                        size="small"
-                        onClick={() => togglePasswordVisibility(password.id)}
-                        sx={{ ml: 1 }}
-                      >
-                        {visiblePasswords[password.id] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        aria-label="bearbeiten"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleEditPassword(password);
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label="löschen"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteClick(password);
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         <Paper elevation={3} sx={{ p: 3, mt: 4 }}>
           <Typography variant="h6" component="h2" gutterBottom>
@@ -384,8 +387,11 @@ const DashboardPage = () => {
             2FA aktivieren
           </Button>
         </Paper>
+        </>
+      )} {/* Closing the conditional fragment for passwords */}
+    </Box>
 
-        <Dialog open={openDetailDialog} onClose={handleCloseDetailDialog}>
+    <Dialog open={openDetailDialog} onClose={handleCloseDetailDialog}>
           <DialogTitle>Passwort Details</DialogTitle>
           <DialogContent>
             {currentPassword && (

@@ -1,7 +1,7 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = () => {
   const { isAuthenticated, is2FAVerified } = useAuth();
   const location = useLocation();
 
@@ -12,11 +12,11 @@ const ProtectedRoute = ({ children }) => {
 
   // Wenn der Benutzer authentifiziert ist, aber 2FA nicht verifiziert wurde
   if (isAuthenticated && !is2FAVerified) {
-    return <Navigate to="/2fa/verify" state={{ from: location }} replace />;
+    return <Navigate to="/verify-2fa" state={{ from: location }} replace />;
   }
 
   // Wenn alles in Ordnung ist, die geschützte Komponente rendern
-  return children;
+  return <Outlet />;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;

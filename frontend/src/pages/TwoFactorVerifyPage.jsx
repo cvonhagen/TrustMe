@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Alert } from '@mui/material';
+import { Container, Typography, Paper, Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { verifyTwoFactorLogin } from '../services/api';
 import { useAuth } from '../AuthContext';
@@ -10,7 +11,13 @@ const TwoFactorVerifyPage = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState(null);
   // Hooks für Navigation und Location-State
+  const { logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
   const location = useLocation();
   // Authentifizierungskontext
   const { login: authLogin, isAuthenticated } = useAuth();
@@ -58,7 +65,22 @@ const TwoFactorVerifyPage = () => {
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="md">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 3 }}>
+        <Typography variant="h4" component="h1">
+          2FA Verifizierung
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="secondary" 
+          startIcon={<ExitToAppIcon />}
+          onClick={handleLogout}
+        >
+          Logout
+        </Button>
+      </Box>
+      
+      {/* Rest der Komponente bleibt unverändert */}
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           2FA Code verifizieren
@@ -88,4 +110,4 @@ const TwoFactorVerifyPage = () => {
   );
 };
 
-export default TwoFactorVerifyPage; 
+export default TwoFactorVerifyPage;

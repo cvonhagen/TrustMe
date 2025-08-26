@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Navbar from './components/Navbar';
 
 // Import page components
 import LoginPage from './pages/LoginPage';
@@ -21,25 +20,22 @@ function App() {
   }
 
   return (
-    <>
-      <Navbar />
-      <Routes>
-        {/* Öffentliche Routen */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+    <Routes>
+      {/* Öffentliche Routen */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-        {/* Geschützte Routen */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/setup-2fa" element={<TwoFactorSetupPage />} />
-          <Route path="/verify-2fa" element={<TwoFactorVerifyPage />} />
-        </Route>
+      {/* Geschützte Routen */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/setup-2fa" element={<TwoFactorSetupPage />} />
+        <Route path="/verify-2fa" element={<TwoFactorVerifyPage />} />
+      </Route>
 
-        {/* Fallback-Route für nicht gefundene Pfade oder nicht authentifizierte Zugriffe */}
-        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-        <Route path="*" element={<LoginPage />} />
-      </Routes>
-    </>
+      {/* Fallback-Route für nicht gefundene Pfade oder nicht authentifizierte Zugriffe */}
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="*" element={<LoginPage />} />
+    </Routes>
   );
 }
 

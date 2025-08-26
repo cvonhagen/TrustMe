@@ -1,8 +1,9 @@
 import React, { useState, useContext } from 'react';
-import { Container, Typography, Box, Button, TextField, Paper, Alert } from '@mui/material';
+import { Container, Typography, Paper, Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { setupTwoFactor } from '../services/api';
-import { useAuth } from '../AuthContext';
 
 // Komponente für die Zwei-Faktor-Authentifizierungs-Einrichtungsseite.
 const TwoFactorSetupPage = () => {
@@ -12,9 +13,13 @@ const TwoFactorSetupPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   // Hook für die Navigation
+  const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  // Authentifizierungskontext
-  const { isAuthenticated } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   // Weiterleitung, falls der Benutzer nicht authentifiziert ist.
   if (!isAuthenticated) {
@@ -50,7 +55,21 @@ const TwoFactorSetupPage = () => {
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="md">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 3 }}>
+        <Typography variant="h4" component="h1">
+          2FA Einrichtung
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="secondary" 
+          startIcon={<ExitToAppIcon />}
+          onClick={handleLogout}
+        >
+          Logout
+        </Button>
+      </Box>
+      
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Zwei-Faktor-Authentifizierung einrichten
@@ -93,4 +112,4 @@ const TwoFactorSetupPage = () => {
   );
 };
 
-export default TwoFactorSetupPage; 
+export default TwoFactorSetupPage;

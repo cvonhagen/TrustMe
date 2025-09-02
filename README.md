@@ -54,7 +54,7 @@ Sieh ma zu, dat die folgenden Sachen auf deinem Rechna sind:
     git clone <repository-url>
     cd TrustMe
     ```
-2. Navigiert in dat Backend-Verzeichnis und erstell mal sonne `.env`-Datei wie in dat Beispiel (wenn da eins is). Da kommt eure Datenbank-URL und einen JWT-Key, z.B von https://jwtsecret.com/generate , rein.
+2. Navigiert in dat Backend-Verzeichnis und erstell mal sonne `.env`-Datei wie in dat Beispiel (wenn da eins is). Da kommt eure Datenbank-URL und einen JWT-Key, z.B von https://jwtsecrets.com/ , rein.
     ```bash
     cd backend
     # Mach sonne .env Datei und tu eure DATABASE_URL und JWT_SECRET_KEY da rein

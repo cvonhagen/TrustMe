@@ -1,10 +1,12 @@
 import React from 'react';
 import { Container, Typography, Box, Paper } from '@mui/material';
+import Footer from '../components/Footer';
 
 // SettingsPage-Komponente für die Benutzer-Einstellungen.
 const SettingsPage = () => {
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <>
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4, paddingBottom: '100px' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           Einstellungen
@@ -37,6 +39,8 @@ const SettingsPage = () => {
         </Typography>
       </Paper>
     </Container>
+    <Footer />
+    </>
   );
 };
 

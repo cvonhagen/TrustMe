@@ -6,6 +6,8 @@ import { useThemeContext } from '../ThemeContext';
 import { useAuth } from '../AuthContext';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 // LoginPage-Komponente für die Benutzeranmeldung und -registrierung.
 const LoginPage = () => {
@@ -17,6 +19,7 @@ const LoginPage = () => {
   const [twoFACode, setTwoFACode] = useState('');       // Zustand für den 2FA-Code
   const [showTwoFAInput, setShowTwoFAInput] = useState(false); // Zustand, ob 2FA-Eingabe angezeigt wird
   const [tempUsername, setTempUsername] = useState(''); // Temporärer Zustand für den Benutzernamen während des 2FA-Flows
+  const [tempMasterPassword, setTempMasterPassword] = useState(''); // Temporäres Master-Passwort für 2FA-Verifizierung
   const [loginError, setLoginError] = useState(null); // Zustand für Anmelde-/Registrierungsfehler
 
   // Hooks für Navigation und Kontext-Zugriff
@@ -36,11 +39,11 @@ const LoginPage = () => {
       const { token, two_fa_enabled, salt } = response.data;
 
       if (two_fa_enabled) {
-        // Wenn 2FA aktiviert ist: 2FA-Eingabefeld anzeigen und temporären Benutzernamen speichern
+        // Wenn 2FA aktiviert ist: 2FA-Eingabefeld anzeigen und temporäre Daten speichern
         setShowTwoFAInput(true);
-        setTempUsername(username); 
-        // Schlüssel ableiten und Token setzen (Vorbereitung für 2FA-Verifizierung)
-        await login(username, masterPassword, salt, token); 
+        setTempUsername(username);
+        setTempMasterPassword(masterPassword);
+        // NICHT einloggen, bis 2FA verifiziert ist
       } else {
         // Wenn 2FA nicht aktiviert ist: Benutzer direkt anmelden und zum Dashboard navigieren
         await login(username, masterPassword, salt, token); 
@@ -59,8 +62,13 @@ const LoginPage = () => {
     setLoginError(null); // Vorherige Fehler zurücksetzen
     try {
       // API-Aufruf zur Verifizierung des 2FA-Codes
-      await verifyTwoFactorLogin({ username: tempUsername, code: twoFACode });
-      // Bei erfolgreicher 2FA-Verifizierung: Zum Dashboard navigieren (Login sollte bereits erfolgt sein)
+      const response = await verifyTwoFactorLogin({ username: tempUsername, code: twoFACode });
+      // Extrahieren der relevanten Daten aus der 2FA-Verifizierungs-Antwort
+      const { token, salt } = response.data;
+      
+      // Jetzt erst einloggen mit den korrekten Daten
+      await login(tempUsername, tempMasterPassword, salt, token);
+      // Bei erfolgreicher 2FA-Verifizierung: Zum Dashboard navigieren
       navigate('/dashboard'); 
     } catch (err) {
       // Fehlerbehandlung bei der 2FA-Verifizierung
@@ -86,14 +94,18 @@ const LoginPage = () => {
   };
 
   return (
+    <>
+    <Header />
     <Container component="main" maxWidth="sm" sx={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - 160px)', // Angepasst für Header und festen Footer
       color: 'text.primary',
-      px: 2
+      px: 2,
+      py: 4,
+      paddingBottom: '100px' // Extra Platz für festen Footer
     }}>
       <Paper elevation={3} sx={{
         p: 4,
@@ -124,16 +136,16 @@ const LoginPage = () => {
       </Box>
 
       <Box sx={{ textAlign: 'center' }}>
-        {/* Titel und Beschreibung der Anwendung */}
-        <Typography component="h1" variant="h4" sx={{ mb: 1 }}>
-          Ihre Passwörter. Sicher. Einfach. Jederzeit.
+        {/* Willkommensnachricht */}
+        <Typography variant="h6" sx={{ mb: 1, color: 'text.primary' }}>
+          Willkommen zurück!
         </Typography>
-        <Typography variant="body1" sx={{ mb: 3 }}>
-          TrustMe ist Ihr persönlicher Passwort-Manager, der Ihre digitalen Anmeldeinformationen sicher verwaltet und verschlüsselt. Behalten Sie die Kontrolle über Ihre Online-Identität.
+        <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+          Melden Sie sich an, um auf Ihre sicher verschlüsselten Passwörter zuzugreifen.
         </Typography>
         
         {/* Überschrift für Login oder Registrierung */}
-        <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
+        <Typography component="h2" variant="h5" sx={{ mb: 2 }}>
           {isLogin ? 'Anmelden' : 'Registrieren'}
         </Typography>
         
@@ -242,6 +254,8 @@ const LoginPage = () => {
       </Box>
     </Paper>
   </Container>
+  <Footer />
+  </>
   );
 };
 

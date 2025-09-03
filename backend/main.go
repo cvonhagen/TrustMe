@@ -1,3 +1,5 @@
+// TrustMe Password Manager Backend
+// Sichere REST API mit JWT-Authentifizierung und client-seitiger Verschlüsselung
 package main
 
 import (
@@ -25,28 +27,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// DB ist die globale Datenbankverbindung
-var DB *gorm.DB
+var DB *gorm.DB // Globale Datenbankverbindung
 
-// initDB initialisiert die Datenbankverbindung und führt Migrationen durch
+// Datenbank-Initialisierung mit PostgreSQL und GORM
 func initDB() error {
-	// Umgebungskonfiguration laden
+	// .env-Datei laden (optional)
 	if err := godotenv.Load(); err != nil {
-		// Warnung ausgeben, wenn .env-Datei nicht gefunden/geladen werden konnte (Umgebungsvariablen könnten extern gesetzt sein)
-		log.Printf("Warnung: .env-Datei nicht gefunden oder konnte nicht geladen werden: %v", err)
+		log.Printf("Warnung: .env-Datei nicht gefunden: %v", err)
 	}
 
-	// Datenbank-Verbindungsstring aus Umgebungsvariable laden
+	// PostgreSQL-Verbindungsstring aus Umgebungsvariable
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		return fmt.Errorf("Umgebungsvariable DATABASE_URL ist erforderlich")
+		return fmt.Errorf("DATABASE_URL Umgebungsvariable erforderlich")
 	}
 
-	// Verbindung zur PostgreSQL-Datenbank herstellen
+	// GORM-Datenbankverbindung mit Performance-Optimierungen
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		// Performance-Optimierungen aktivieren
-		PrepareStmt: true,
-		// Fremdschlüssel-Constraints während der Migration deaktivieren
+		PrepareStmt:                              true, // Prepared Statements für bessere Performance
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
@@ -70,9 +68,7 @@ func initDB() error {
 	DB.Migrator().DropTable(&models.Password{})
 	DB.Migrator().DropTable(&models.User{})
 
-	// Datenbankmigrationen durchführen
-	// AutoMigrate erstellt oder aktualisiert Tabellen basierend auf den Modelldefinitionen.
-	// Hier werden User- und Password-Tabellen migriert.
+	// Automatische Tabellen-Migration (User & Password Models)
 	if err := DB.AutoMigrate(&models.User{}, &models.Password{}); err != nil {
 		return fmt.Errorf("Datenbankmigrationen fehlgeschlagen: %w", err)
 	}
@@ -80,11 +76,10 @@ func initDB() error {
 	return nil
 }
 
-// AuthRequired ist ein Middleware zum Schutz von Routen, die Authentifizierung erfordern.
-// Es überprüft den JWT-Token im Authorization-Header.
+// JWT-Authentifizierungs-Middleware für geschützte Routen
 func AuthRequired() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Authorization-Header abrufen
+		// Authorization-Header prüfen
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -92,7 +87,7 @@ func AuthRequired() fiber.Handler {
 			})
 		}
 
-		// Bearer-Token extrahieren (Format: "Bearer <token>")
+		// Bearer-Token extrahieren
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -107,7 +102,7 @@ func AuthRequired() fiber.Handler {
 			})
 		}
 
-		// JWT-Token validieren und Benutzer-ID abrufen
+		// JWT-Token validieren und User-ID extrahieren
 		userID, err := security.ValidateJWTToken(tokenString)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -115,9 +110,9 @@ func AuthRequired() fiber.Handler {
 			})
 		}
 
-		// Benutzer-ID im Fiber-Kontext speichern
+		// User-ID für nachfolgende Handler verfügbar machen
 		c.Locals("userID", userID)
-		return c.Next() // Fortfahren mit der nächsten Middleware/Route-Handler
+		return c.Next()
 	}
 }
 
@@ -179,9 +174,11 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 
 	// Authentifizierungsrouten (öffentlich zugänglich)
 	auth := api.Group("/auth")
-	auth.Post("/register", handlers.Auth.Register)             // Benutzerregistrierung
-	auth.Post("/login", handlers.Auth.Login)                   // Benutzeranmeldung
-	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout) // Benutzerabmeldung (geschützt)
+	auth.Post("/register", handlers.Auth.Register)                       // Benutzerregistrierung
+	auth.Post("/login", handlers.Auth.Login)                             // Benutzeranmeldung
+	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)   // Token validieren (geschützt)
+	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)           // Benutzerabmeldung (geschützt)
+	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount) // Account löschen (geschützt)
 
 	// Passwortverwaltungsrouten (geschützt, erfordert Authentifizierung)
 	passwords := api.Group("/passwords", AuthRequired())

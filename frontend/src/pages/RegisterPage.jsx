@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Container, TextField, Button, Typography, Box, Link, Paper, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { registerUser } from '../services/api';
+import Footer from '../components/Footer';
 
 // RegisterPage-Komponente für die Benutzerregistrierung.
 function RegisterPage() {
@@ -50,14 +51,16 @@ function RegisterPage() {
   };
 
   return (
+    <>
     <Container 
       component="main" 
       maxWidth="xs" 
       sx={{
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - 80px)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        paddingBottom: '100px'
       }}
     >
       <Paper 
@@ -139,6 +142,8 @@ function RegisterPage() {
         </Box>
       </Paper>
     </Container>
+    <Footer />
+    </>
   );
 }
 

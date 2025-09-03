@@ -1,10 +1,12 @@
 package services
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 
 	"github.com/pquerna/otp/totp"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -19,8 +21,8 @@ func NewTwoFAService(db *gorm.DB, userService *UserService) *TwoFAService {
 	return &TwoFAService{DB: db, UserService: userService}
 }
 
-// GenerateTwoFASecret generiert ein neues TOTP-Geheimnis und gibt das Geheimnis und die Provisionierungs-URL zurück.
-func (s *TwoFAService) GenerateTwoFASecret(userID uint) (secret string, provisioningURL string, err error) {
+// GenerateTwoFASecret generiert ein neues TOTP-Geheimnis und gibt das Geheimnis und den QR-Code als Base64-Bild zurück.
+func (s *TwoFAService) GenerateTwoFASecret(userID uint) (secret string, qrCodeBase64 string, err error) {
 	// Benutzer anhand der ID abrufen
 	user, err := s.UserService.GetUserByID(userID)
 	if err != nil {
@@ -37,12 +39,25 @@ func (s *TwoFAService) GenerateTwoFASecret(userID uint) (secret string, provisio
 	}
 
 	secret = key.Secret()
-	provisioningURL = key.URL()
+	provisioningURL := key.URL()
 
-	// Das Geheimnis im Benutzermodell speichern (aber noch nicht speichern)
+	// QR-Code als PNG generieren
+	qrCodePNG, err := qrcode.Encode(provisioningURL, qrcode.Medium, 256)
+	if err != nil {
+		return "", "", fmt.Errorf("Fehler beim Generieren des QR-Codes: %w", err)
+	}
+
+	// QR-Code als Base64-String kodieren
+	qrCodeBase64 = "data:image/png;base64," + base64.StdEncoding.EncodeToString(qrCodePNG)
+
+	// Das Geheimnis temporär im Benutzermodell speichern für die Verifizierung
 	user.TwoFASecret = secret
+	// Temporär speichern, aber 2FA noch nicht aktivieren
+	if err := s.DB.Save(user).Error; err != nil {
+		return "", "", fmt.Errorf("Fehler beim temporären Speichern des 2FA-Geheimnisses: %w", err)
+	}
 
-	return secret, provisioningURL, nil
+	return secret, qrCodeBase64, nil
 }
 
 // VerifyTwoFACode verifiziert den bereitgestellten TOTP-Code anhand des gespeicherten Geheimnisses des Benutzers.
@@ -53,9 +68,9 @@ func (s *TwoFAService) VerifyTwoFACode(userID uint, code string) (bool, error) {
 		return false, fmt.Errorf("Benutzer nicht gefunden: %w", err)
 	}
 
-	// Prüfen, ob 2FA für diesen Benutzer aktiviert ist oder ob das Geheimnis fehlt
-	if !user.TwoFAEnabled || user.TwoFASecret == "" {
-		return false, errors.New("2FA ist für diesen Benutzer nicht aktiviert")
+	// Prüfen, ob das Geheimnis fehlt (während Setup kann 2FA noch nicht aktiviert sein)
+	if user.TwoFASecret == "" {
+		return false, errors.New("2FA-Geheimnis nicht gefunden")
 	}
 
 	// TOTP-Code verifizieren

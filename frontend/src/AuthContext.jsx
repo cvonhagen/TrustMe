@@ -1,14 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { deriveKeyFromPassword } from './utils/crypto'; // Importiere die Schlüsselableitungsfunktion
-import { setAuthToken } from './services/api'; // Korrigierter Importpfad
-import { useThemeContext } from './ThemeContext';
-import api from './services/api'; // Implied import for the new loadAuthStatus function
+import { deriveKeyFromPassword } from './utils/crypto';
+import { setAuthToken, validateToken } from './services/api';
 
+// AuthContext für globale Authentifizierung und Verschlüsselungsschlüssel-Verwaltung
 const AuthContext = createContext({
   user: null,
-  encryptionKey: null, // Store the derived encryption key here
-  login: async (username, masterPassword, saltBase64, token) => {}, // Method to handle login and key derivation
-  logout: () => {}, // Method to handle logout
+  encryptionKey: null, // Client-seitiger Verschlüsselungsschlüssel
+  login: async (username, masterPassword, saltBase64, token) => {},
+  logout: () => {},
   isAuthenticated: false,
 });
 
@@ -16,26 +15,38 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [encryptionKey, setEncryptionKey] = useState(null);
+  const [encryptionKey, setEncryptionKey] = useState(null); // Für lokale Verschlüsselung
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [is2FAVerified, setIs2FAVerified] = useState(false);
 
-  // Funktion zum Laden des Authentifizierungsstatus aus dem Local Storage
+  // Lädt Auth-Status beim App-Start und validiert Token gegen Backend
   const loadAuthStatus = async () => {
-    console.log('AuthContext: Attempting to load auth status from localStorage.'); // Debugging
+    console.log('AuthContext: Attempting to load auth status from localStorage.');
     const storedToken = localStorage.getItem('access_token');
-    console.log('AuthContext: Retrieved storedToken:', storedToken); // Debugging
+    console.log('AuthContext: Retrieved storedToken:', storedToken);
 
     if (storedToken) {
-      setAuthToken(storedToken); // Setze den Token in api.js
-      console.log('AuthContext: setAuthToken called with storedToken.'); // Debugging
-      // In einer Produktions-App MUSS der Token gegen das Backend validiert und Benutzerdetails geladen werden!
-      setUser({}); // Setze einen Platzhalter-Benutzer, um isAuthenticated auf true zu setzen
-      setIs2FAVerified(true); // Assume 2FA is verified if token exists (needs refinement for actual 2FA flow)
-      console.log('AuthContext: Auth token found and set via setAuthToken.');
+      setAuthToken(storedToken);
+      console.log('AuthContext: setAuthToken called with storedToken.');
+      
+      try {
+        // Token-Validierung gegen Backend - wichtig für Serverneustart-Erkennung
+        await validateToken();
+        console.log('AuthContext: Token validation successful.');
+        setUser({});
+        setIs2FAVerified(true);
+        console.log('AuthContext: Auth token found and validated.');
+      } catch (error) {
+        console.log('AuthContext: Token validation failed or server unreachable. Clearing auth state.', error);
+        // Bei Serverausfall oder ungültigem Token: Auth-State zurücksetzen
+        setAuthToken(null);
+        setUser(null);
+        setIs2FAVerified(false);
+        setEncryptionKey(null);
+      }
     } else {
-      setAuthToken(null); // Stelle sicher, dass der Token in api.js null ist
-      setUser(null); // Kein Token im localStorage
+      setAuthToken(null);
+      setUser(null);
       console.log('AuthContext: No auth token found in localStorage.');
     }
     // Der encryptionKey kann hier NICHT wiederhergestellt werden, da er nicht gespeichert wird

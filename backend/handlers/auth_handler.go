@@ -67,3 +67,29 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		"message": "Successfully logged out",
 	})
 }
+
+// DeleteAccount handles user account deletion requests.
+func (h *AuthHandler) DeleteAccount(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(uint)
+
+	if err := h.AuthService.DeleteAccount(userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Account deleted successfully",
+	})
+}
+
+// ValidateToken validates if the current token is still valid.
+func (h *AuthHandler) ValidateToken(c *fiber.Ctx) error {
+	// If we reach this point, the JWT middleware has already validated the token
+	userID := c.Locals("userID").(uint)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Token is valid",
+		"user_id": userID,
+	})
+}

@@ -94,3 +94,18 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 		Salt:         user.Salt,
 	}, nil
 }
+
+// DeleteAccount löscht den Account eines Benutzers und alle zugehörigen Daten.
+func (s *AuthService) DeleteAccount(userID uint) error {
+	// Zuerst alle Passwörter des Benutzers löschen
+	if err := s.DB.Where("user_id = ?", userID).Delete(&models.Password{}).Error; err != nil {
+		return fmt.Errorf("Fehler beim Löschen der Passwörter: %w", err)
+	}
+
+	// Dann den Benutzer selbst löschen
+	if err := s.DB.Delete(&models.User{}, userID).Error; err != nil {
+		return fmt.Errorf("Fehler beim Löschen des Benutzers: %w", err)
+	}
+
+	return nil
+}

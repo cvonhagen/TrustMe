@@ -26,7 +26,7 @@ func NewTwoFAHandler(twoFAService *services.TwoFAService, userService *services.
 func (h *TwoFAHandler) InitiateSetup(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 
-	secret, provisioningURL, err := h.TwoFAService.GenerateTwoFASecret(userID)
+	secret, qrCodeBase64, err := h.TwoFAService.GenerateTwoFASecret(userID)
 	if err != nil {
 		// Check if user not found error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,11 +35,11 @@ func (h *TwoFAHandler) InitiateSetup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to initiate 2FA setup"})
 	}
 
-	// Note: Returning the secret is for displaying the QR code.
+	// Note: Returning the secret and QR code as Base64 image.
 	// The secret is also stored temporarily with the user in the service layer.
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"secret":           secret,
-		"provisioning_url": provisioningURL,
+		"secret":      secret,
+		"qr_code_url": qrCodeBase64,
 	})
 }
 

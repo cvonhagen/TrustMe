@@ -4,6 +4,7 @@ import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { setupTwoFactor } from '../services/api';
+import Footer from '../components/Footer';
 
 // Komponente für die Zwei-Faktor-Authentifizierungs-Einrichtungsseite.
 const TwoFactorSetupPage = () => {
@@ -55,7 +56,8 @@ const TwoFactorSetupPage = () => {
   };
 
   return (
-    <Container maxWidth="md">
+    <>
+    <Container maxWidth="md" sx={{ paddingBottom: '100px' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 3 }}>
         <Typography variant="h4" component="h1">
           2FA Einrichtung
@@ -109,6 +111,8 @@ const TwoFactorSetupPage = () => {
         </Paper>
       </Box>
     </Container>
+    <Footer />
+    </>
   );
 };
 

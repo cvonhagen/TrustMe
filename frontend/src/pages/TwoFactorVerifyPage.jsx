@@ -4,6 +4,7 @@ import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { verifyTwoFactorLogin } from '../services/api';
 import { useAuth } from '../AuthContext';
+import Footer from '../components/Footer';
 
 // Komponente für die 2FA-Verifizierungsseite beim Login.
 const TwoFactorVerifyPage = () => {
@@ -65,7 +66,8 @@ const TwoFactorVerifyPage = () => {
   };
 
   return (
-    <Container maxWidth="md">
+    <>
+    <Container maxWidth="md" sx={{ paddingBottom: '100px' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, mt: 3 }}>
         <Typography variant="h4" component="h1">
           2FA Verifizierung
@@ -107,6 +109,8 @@ const TwoFactorVerifyPage = () => {
         </Paper>
       </Box>
     </Container>
+    <Footer />
+    </>
   );
 };
 

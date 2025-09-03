@@ -247,9 +247,19 @@ const LoginPage = () => {
             setLoginError(null); // Fehler beim Wechsel des Modus zurücksetzen
             setShowTwoFAInput(false); // 2FA-Eingabe bei Moduswechsel verbergen
           }}
-          sx={{ mt: 2 }}
+          sx={{ mt: 2, display: 'block' }}
         >
           {isLogin ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}
+        </Link>
+
+        {/* Link zurück zur Startseite */}
+        <Link
+          component="button"
+          variant="body2"
+          onClick={() => navigate('/')}
+          sx={{ mt: 1, color: 'text.secondary' }}
+        >
+          ← Zurück zur Startseite
         </Link>
       </Box>
     </Paper>

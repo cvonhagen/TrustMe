@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 
 // Import page components
+import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -22,6 +23,7 @@ function App() {
   return (
     <Routes>
       {/* Öffentliche Routen */}
+      <Route path="/welcome" element={<WelcomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
@@ -33,8 +35,8 @@ function App() {
       </Route>
 
       {/* Fallback-Route für nicht gefundene Pfade oder nicht authentifizierte Zugriffe */}
-      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-      <Route path="*" element={<LoginPage />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <WelcomePage />} />
+      <Route path="*" element={<WelcomePage />} />
     </Routes>
   );
 }

@@ -14,7 +14,8 @@ const Footer = () => {
         right: 0,
         py: 1.5,
         px: 2,
-        backgroundImage: 'url(/src/assets/sternenhimmel-und-mond-gemischte-medien-700-97944939.jpg)',
+        backgroundImage:
+          "url(/src/assets/sternenhimmel-und-mond-gemischte-medien-700-97944939.jpg)",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",

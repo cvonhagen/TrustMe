@@ -39,7 +39,7 @@ func initDB() error {
 	// PostgreSQL-Verbindungsstring aus Umgebungsvariable
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		return fmt.Errorf("DATABASE_URL Umgebungsvariable erforderlich")
+		return fmt.Errorf("DATABASE_URL umgebungsvariable erforderlich")
 	}
 
 	// GORM-Datenbankverbindung mit Performance-Optimierungen
@@ -48,7 +48,7 @@ func initDB() error {
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
-		return fmt.Errorf("Verbindung zur Datenbank fehlgeschlagen: %w", err)
+		return fmt.Errorf("verbindung zur Datenbank fehlgeschlagen: %w", err)
 	}
 
 	// Verbindungspool konfigurieren
@@ -70,7 +70,7 @@ func initDB() error {
 
 	// Automatische Tabellen-Migration (User & Password Models)
 	if err := DB.AutoMigrate(&models.User{}, &models.Password{}); err != nil {
-		return fmt.Errorf("Datenbankmigrationen fehlgeschlagen: %w", err)
+		return fmt.Errorf("datenbankmigrationen fehlgeschlagen: %w", err)
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func AuthRequired() fiber.Handler {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Authorization-Header ist erforderlich",
+				"error": "authorization-Header ist erforderlich",
 			})
 		}
 
@@ -91,14 +91,14 @@ func AuthRequired() fiber.Handler {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Ungültiges Format des Authorization-Headers. Erwartet: Bearer <token>",
+				"error": "ungültiges Format des Authorization-Headers. Erwartet: Bearer <token>",
 			})
 		}
 
 		tokenString := parts[1]
 		if tokenString == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Token darf nicht leer sein",
+				"error": "token darf nicht leer sein",
 			})
 		}
 
@@ -106,7 +106,7 @@ func AuthRequired() fiber.Handler {
 		userID, err := security.ValidateJWTToken(tokenString)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Ungültiger oder abgelaufener Token",
+				"error": "ungültiger oder abgelaufener Token",
 			})
 		}
 
@@ -144,7 +144,7 @@ func setupMiddleware(app *fiber.App) {
 		},
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
-				"error": "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
+				"error": "zu viele Anfragen. Bitte versuchen Sie es später erneut.",
 			})
 		},
 	}))
@@ -267,7 +267,7 @@ func gracefulShutdown(app *fiber.App) {
 func main() {
 	// Datenbank initialisieren
 	if err := initDB(); err != nil {
-		log.Fatalf("Datenbankinitialisierung fehlgeschlagen: %v", err)
+		log.Fatalf("datenbankinitialisierung fehlgeschlagen: %v", err)
 	}
 
 	// Dienste und Handler initialisieren
@@ -278,7 +278,7 @@ func main() {
 		// Error-Handler für die zentrale Fehlerbehandlung
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
-			message := "Interner Serverfehler"
+			message := "interner Serverfehler"
 
 			// Wenn es ein Fiber-Fehler ist, den Statuscode und die Nachricht extrahieren
 			if e, ok := err.(*fiber.Error); ok {
@@ -311,6 +311,6 @@ func main() {
 
 	// Server an angegebenem Port lauschen
 	if err := app.Listen(":" + port); err != nil {
-		log.Fatalf("Server konnte nicht gestartet werden: %v", err)
+		log.Fatalf("server konnte nicht gestartet werden: %v", err)
 	}
 }

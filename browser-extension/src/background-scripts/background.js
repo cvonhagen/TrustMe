@@ -73,6 +73,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+// Event-Listener für Extension-Icon-Klicks
+chrome.action.onClicked.addListener((tab) => {
+  // This will open the popup - handled by manifest.json default_popup
+  console.log('Extension icon clicked for tab:', tab.url);
+});
+
 // --- Autofill related logic ---
 async function handleTabUpdate(tab) {
   console.log('Tab updated:', tab.url);

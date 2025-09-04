@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// Placeholder for backend API base URL loaded from extension storage or config
-// For local development, you might hardcode it or load from a local config file
-const API_BASE_URL = 'http://localhost:8000/api/v1'; // Example local backend URL
+// Backend API base URL - matches TrustMe backend configuration
+const API_BASE_URL = 'http://localhost:3030/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

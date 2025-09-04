@@ -64,11 +64,8 @@ func initDB() error {
 
 	DB = db
 
-	// Tabellen löschen und neu erstellen
-	DB.Migrator().DropTable(&models.Password{})
-	DB.Migrator().DropTable(&models.User{})
-
 	// Automatische Tabellen-Migration (User & Password Models)
+	// Erstellt Tabellen nur wenn sie nicht existieren, behält bestehende Daten
 	if err := DB.AutoMigrate(&models.User{}, &models.Password{}); err != nil {
 		return fmt.Errorf("datenbankmigrationen fehlgeschlagen: %w", err)
 	}

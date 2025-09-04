@@ -1,92 +1,136 @@
 /* TrustMe Password Manager Content Script Styles */
 
-/* Hervorhebung für gefundene Eingabefelder */
-.trustme-highlight {
-  position: relative;
-  box-shadow: 0 0 0 2px #4CAF50 !important;
-  transition: box-shadow 0.3s ease;
+.trustme-autofill-popup {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    padding: 20px !important;
+    z-index: 999999 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 14px !important;
+    color: #333 !important;
+    max-width: 300px !important;
+    width: 90% !important;
 }
 
-/* Tooltip für Autofill-Status */
-.trustme-tooltip {
-  position: absolute;
-  background-color: #4CAF50;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 10000;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.trustme-autofill-popup h3 {
+    margin: 0 0 15px 0 !important;
+    color: #667eea !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
 }
 
-.trustme-highlight:hover .trustme-tooltip {
-  opacity: 1;
+.trustme-autofill-popup .password-option {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px !important;
+    border: 1px solid #eee !important;
+    border-radius: 4px !important;
+    margin-bottom: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
 }
 
-/* Animation für Autofill-Aktion */
-@keyframes trustme-autofill {
-  0% {
-    background-color: rgba(76, 175, 80, 0.1);
-  }
-  100% {
-    background-color: transparent;
-  }
+.trustme-autofill-popup .password-option:hover {
+    background: #f8f9fa !important;
+    border-color: #667eea !important;
 }
 
+.trustme-autofill-popup .password-info {
+    flex: 1 !important;
+}
+
+.trustme-autofill-popup .password-website {
+    font-weight: 500 !important;
+    margin-bottom: 2px !important;
+}
+
+.trustme-autofill-popup .password-username {
+    font-size: 12px !important;
+    color: #666 !important;
+}
+
+.trustme-autofill-popup .password-actions {
+    display: flex !important;
+    gap: 5px !important;
+}
+
+.trustme-autofill-popup button {
+    padding: 4px 8px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.trustme-autofill-popup .btn-fill {
+    background: #667eea !important;
+    color: white !important;
+}
+
+.trustme-autofill-popup .btn-fill:hover {
+    background: #5a6fd8 !important;
+}
+
+.trustme-autofill-popup .btn-close {
+    background: #6c757d !important;
+    color: white !important;
+    margin-top: 15px !important;
+    width: 100% !important;
+    padding: 8px !important;
+}
+
+.trustme-autofill-popup .btn-close:hover {
+    background: #5a6268 !important;
+}
+
+.trustme-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 999998 !important;
+}
+
+/* Highlight autofilled fields */
 .trustme-autofilled {
-  animation: trustme-autofill 1s ease;
+    background-color: #e8f4fd !important;
+    border-color: #667eea !important;
+    transition: all 0.3s ease !important;
 }
 
-/* Stil für den Autofill-Button */
-.trustme-autofill-button {
-  position: absolute;
-  right: -30px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* Notification styles */
+.trustme-notification {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: #28a745 !important;
+    color: white !important;
+    padding: 12px 16px !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+    z-index: 999999 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 14px !important;
+    opacity: 0 !important;
+    transform: translateX(100%) !important;
+    transition: all 0.3s ease !important;
 }
 
-.trustme-highlight:hover .trustme-autofill-button {
-  opacity: 1;
+.trustme-notification.show {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
 }
 
-.trustme-autofill-button:hover {
-  background-color: #45a049;
+.trustme-notification.error {
+    background: #dc3545 !important;
 }
-
-/* Fehlerzustand */
-.trustme-error {
-  box-shadow: 0 0 0 2px #f44336 !important;
-}
-
-.trustme-error .trustme-tooltip {
-  background-color: #f44336;
-}
-
-/* Erfolgszustand */
-.trustme-success {
-  box-shadow: 0 0 0 2px #4CAF50 !important;
-}
-
-.trustme-success .trustme-tooltip {
-  background-color: #4CAF50;
-}
-
-/* Warnzustand */
-.trustme-warning {
-  box-shadow: 0 0 0 2px #ff9800 !important;
-}
-
-.trustme-warning .trustme-tooltip {
-  background-color: #ff9800;
-} 

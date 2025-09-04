@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,7 +42,7 @@
             padding: 4px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
+
         .logo img {
             width: 100%;
             height: 100%;
@@ -273,8 +274,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .no-passwords {
@@ -300,6 +306,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -321,17 +328,17 @@
             <div id="loginForm" class="login-form">
                 <div id="error" class="error"></div>
                 <div id="success" class="success"></div>
-                
+
                 <div class="form-group">
                     <label for="username">Benutzername</label>
                     <input type="text" id="username" placeholder="Benutzername eingeben">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="password">Master-Passwort</label>
                     <input type="password" id="password" placeholder="Master-Passwort eingeben">
                 </div>
-                
+
                 <button id="loginBtn" class="btn btn-primary">Anmelden</button>
                 <button id="openWebAppBtn" class="btn btn-secondary">Web-App öffnen</button>
             </div>
@@ -361,4 +368,5 @@
 
     <script src="popup.js"></script>
 </body>
+
 </html>

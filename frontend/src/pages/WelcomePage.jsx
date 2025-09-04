@@ -16,61 +16,90 @@ const WelcomePage = () => {
   };
 
   return (
-    <>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Theme Toggle Button - Fixed Position */}
+      <Box sx={{ position: "fixed", top: 20, right: 20, zIndex: 1000 }}>
+        <Button
+          onClick={toggleColorMode}
+          color="inherit"
+          sx={{
+            minWidth: "unset",
+            padding: "12px",
+            borderRadius: "50%",
+            backgroundColor: "background.paper",
+            boxShadow: 2,
+            "&:hover": {
+              boxShadow: 4,
+            },
+          }}
+        >
+          {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+        </Button>
+      </Box>
+
       <Container
         component="main"
-        maxWidth="md"
+        maxWidth="lg"
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: "100vh", // Vollbildhöhe ohne Footer
+          flex: 1,
           color: "text.primary",
-          px: 2,
-          py: 4,
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 4, sm: 6, md: 8 },
         }}
       >
         <Paper
-          elevation={3}
+          elevation={6}
           sx={{
-            p: 6,
+            p: { xs: 3, sm: 4, md: 5 },
             width: "100%",
-            maxWidth: "md",
+            maxWidth: "800px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             backgroundColor: "background.paper",
-            borderRadius: 3,
-            boxShadow: 4,
+            borderRadius: 4,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
             textAlign: "center",
+            position: "relative",
+            backdropFilter: "blur(10px)",
+            maxHeight: "90vh",
+            overflow: "hidden",
           }}
         >
-          {/* Theme Toggle Button */}
-          <Box sx={{ position: "absolute", top: 20, right: 20 }}>
-            <Button
-              onClick={toggleColorMode}
-              color="inherit"
-              sx={{
-                minWidth: "unset",
-                padding: "12px",
-                borderRadius: "50%",
-              }}
-            >
-              {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
-            </Button>
-          </Box>
-
           {/* Logo */}
-          <Box sx={{ mb: 4 }}>
+          <Box
+            sx={{
+              mb: { xs: 2, md: 3 },
+              transform: "scale(1)",
+              transition: "transform 0.3s ease",
+              "&:hover": {
+                transform: "scale(1.05)",
+              },
+            }}
+          >
             <img
               src={logoImage}
               alt="TrustMe Logo"
               style={{
-                width: "120px",
-                height: "120px",
+                width: "100px",
+                height: "100px",
                 objectFit: "contain",
                 filter: mode === "dark" ? "brightness(0.9)" : "none",
+                borderRadius: "16px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
               }}
             />
           </Box>
@@ -80,13 +109,13 @@ const WelcomePage = () => {
             variant="h2"
             component="h1"
             sx={{
-              mb: 3,
+              mb: 2,
               fontWeight: "bold",
               background: "linear-gradient(45deg, #1976d2, #42a5f5)",
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              fontSize: { xs: "2.5rem", md: "3.5rem" },
+              fontSize: { xs: "2rem", md: "2.8rem" },
             }}
           >
             TrustMe
@@ -96,99 +125,142 @@ const WelcomePage = () => {
           <Typography
             variant="h5"
             sx={{
-              mb: 4,
+              mb: 3,
               color: "text.secondary",
               fontWeight: 300,
-              fontSize: { xs: "1.2rem", md: "1.5rem" },
+              fontSize: { xs: "1.1rem", md: "1.3rem" },
             }}
           >
             DEIN sicherer Password Manager
           </Typography>
 
           {/* Beschreibung */}
-          <Box sx={{ mb: 5, maxWidth: "600px" }}>
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 2,
-                color: "text.primary",
-                fontSize: "1.1rem",
-                lineHeight: 1.6,
-              }}
-            >
-              Willkommen bei TrustMe - dem Password Manager, dem DU vertrauen
-              kannst!
-            </Typography>
-
+          <Box sx={{ mb: { xs: 3, md: 4 }, maxWidth: "600px", width: "100%" }}>
             <Typography
               variant="body1"
               sx={{
                 mb: 3,
                 color: "text.primary",
-                fontSize: "1.1rem",
-                lineHeight: 1.6,
+                fontSize: { xs: "0.95rem", md: "1rem" },
+                lineHeight: 1.5,
               }}
             >
-              Deine Passwörter werden mit modernster Verschlüsselung geschützt
-              und bleiben immer unter DEINER Kontrolle!
+              Willkommen bei TrustMe - dem Password Manager, dem DU vertrauen
+              kannst! Deine Passwörter werden mit modernster Verschlüsselung
+              geschützt und bleiben immer unter DEINER Kontrolle!
             </Typography>
 
             <Box
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: { xs: 1.5, md: 2 },
                 textAlign: "left",
               }}
             >
-              <Typography
-                variant="body2"
+              <Box
                 sx={{
-                  color: "text.secondary",
                   display: "flex",
                   alignItems: "center",
-                  gap: 1,
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  backgroundColor: "action.hover",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "action.selected",
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
-                🔒 <strong>End-to-End Verschlüsselung</strong> - Ihre Daten sind
-                nur für Sie zugänglich
-              </Typography>
-              <Typography
-                variant="body2"
+                <Box sx={{ fontSize: "1.2rem" }}>🔒</Box>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+                  >
+                    End-to-End Verschlüsselung
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
                 sx={{
-                  color: "text.secondary",
                   display: "flex",
                   alignItems: "center",
-                  gap: 1,
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  backgroundColor: "action.hover",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "action.selected",
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
-                🛡️ <strong>Zwei-Faktor-Authentifizierung</strong> - Doppelter
-                Schutz für Ihr Konto
-              </Typography>
-              <Typography
-                variant="body2"
+                <Box sx={{ fontSize: "1.2rem" }}>🛡️</Box>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+                  >
+                    Zwei-Faktor-Authentifizierung
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
                 sx={{
-                  color: "text.secondary",
                   display: "flex",
                   alignItems: "center",
-                  gap: 1,
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  backgroundColor: "action.hover",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "action.selected",
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
-                ⚡ <strong>Sichere Synchronisation</strong> - Zugriff von
-                überall, immer verschlüsselt
-              </Typography>
-              <Typography
-                variant="body2"
+                <Box sx={{ fontSize: "1.2rem" }}>⚡</Box>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+                  >
+                    Sichere Synchronisation
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
                 sx={{
-                  color: "text.secondary",
                   display: "flex",
                   alignItems: "center",
-                  gap: 1,
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  backgroundColor: "action.hover",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    backgroundColor: "action.selected",
+                    transform: "translateY(-1px)",
+                  },
                 }}
               >
-                🎯 <strong>Benutzerfreundlich</strong> - Einfach zu bedienen,
-                schwer zu knacken
-              </Typography>
+                <Box sx={{ fontSize: "1.2rem" }}>🎯</Box>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+                  >
+                    Benutzerfreundlich
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
           </Box>
 
@@ -198,9 +270,9 @@ const WelcomePage = () => {
             size="large"
             onClick={handleContinue}
             sx={{
-              px: 6,
-              py: 2,
-              fontSize: "1.1rem",
+              px: 5,
+              py: 1.5,
+              fontSize: "1rem",
               fontWeight: "bold",
               borderRadius: 3,
               background: "linear-gradient(45deg, #1976d2, #42a5f5)",
@@ -210,6 +282,7 @@ const WelcomePage = () => {
                 boxShadow: 4,
               },
               transition: "all 0.3s ease",
+              mt: 2,
             }}
           >
             Jetzt starten
@@ -219,7 +292,7 @@ const WelcomePage = () => {
           <Typography
             variant="caption"
             sx={{
-              mt: 4,
+              mt: 2,
               color: "text.secondary",
               fontStyle: "italic",
             }}
@@ -228,7 +301,7 @@ const WelcomePage = () => {
           </Typography>
         </Paper>
       </Container>
-    </>
+    </Box>
   );
 };
 

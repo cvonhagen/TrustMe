@@ -1,6 +1,6 @@
 import React from "react";
-import { Container, Typography, Box, Button, Paper } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Container, Typography, Box, Button, Paper, Link } from "@mui/material";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useThemeContext } from "../ThemeContext";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
@@ -287,6 +287,42 @@ const WelcomePage = () => {
           >
             Jetzt starten
           </Button>
+
+          {/* Rechtliche Links */}
+          <Box sx={{ mt: 3, display: "flex", gap: 3, justifyContent: "center" }}>
+            <Link
+              component={RouterLink}
+              to="/impressum"
+              sx={{
+                color: "text.secondary",
+                textDecoration: "none",
+                fontSize: "0.8rem",
+                "&:hover": {
+                  textDecoration: "underline",
+                  color: "primary.main",
+                },
+                transition: "color 0.3s ease",
+              }}
+            >
+              Impressum
+            </Link>
+            <Link
+              component={RouterLink}
+              to="/datenschutz"
+              sx={{
+                color: "text.secondary",
+                textDecoration: "none",
+                fontSize: "0.8rem",
+                "&:hover": {
+                  textDecoration: "underline",
+                  color: "primary.main",
+                },
+                transition: "color 0.3s ease",
+              }}
+            >
+              Datenschutz
+            </Link>
+          </Box>
 
           {/* Zusätzliche Info */}
           <Typography

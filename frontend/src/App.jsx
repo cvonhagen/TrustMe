@@ -9,6 +9,9 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import TwoFactorSetupPage from './pages/TwoFactorSetupPage';
 import TwoFactorVerifyPage from './pages/TwoFactorVerifyPage';
+import ImpressumPage from './pages/ImpressumPage';
+import DatenschutzPage from './pages/DatenschutzPage';
+
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './AuthContext';
@@ -26,6 +29,9 @@ function App() {
       <Route path="/welcome" element={<WelcomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/impressum" element={<ImpressumPage />} />
+      <Route path="/datenschutz" element={<DatenschutzPage />} />
+
 
       {/* Geschützte Routen */}
       <Route element={<ProtectedRoute />}>

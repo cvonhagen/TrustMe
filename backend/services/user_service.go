@@ -41,6 +41,24 @@ func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
 	return &user, nil // User found, return user and nil error
 }
 
+// GetUserByEmail retrieves a user by their email address.
+// It returns the user and nil error if found, nil and nil error if not found, or nil and an error if a database error occurred.
+func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	res := s.DB.Where("email = ?", email).First(&user)
+
+	if res.Error != nil {
+		// Check if the error is specifically ErrRecordNotFound
+		if res.Error == gorm.ErrRecordNotFound {
+			return nil, nil // User not found, return nil user and nil error
+		}
+		// For any other error, return nil user and the error
+		return nil, res.Error
+	}
+
+	return &user, nil // User found, return user and nil error
+}
+
 // GetUserByID retrieves a user by their ID.
 // It returns the user and nil error if found, nil and nil error if not found, or nil and an error if a database error occurred.
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {

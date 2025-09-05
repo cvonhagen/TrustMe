@@ -32,3 +32,9 @@ type TwoFactorVerifyRequest struct {
 	Username string `json:"username" binding:"required"` // Benutzername
 	Code     string `json:"code" binding:"required"`     // Der vom Benutzer generierte 2FA-Code
 }
+
+// TwoFALoginResponse repräsentiert die Antwort nach erfolgreicher 2FA-Verifizierung
+type TwoFALoginResponse struct {
+	Token string `json:"token"`
+	Salt  string `json:"salt"`
+}

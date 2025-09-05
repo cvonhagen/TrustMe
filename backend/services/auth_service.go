@@ -26,12 +26,15 @@ func NewAuthService(db *gorm.DB, userService *UserService) *AuthService {
 // RegisterUser registriert einen neuen Benutzer in der Datenbank.
 // Es hasht das Master-Passwort und speichert den Benutzer.
 func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
-	// Prüfen, ob der Benutzername oder die E-Mail bereits existiert
+	// Prüfen, ob der Benutzername bereits existiert
 	if existingUser, _ := s.UserService.GetUserByUsername(req.Username); existingUser != nil {
 		return errors.New("Benutzername ist bereits vergeben")
 	}
 
-	// TODO: E-Mail-Existenzprüfung hinzufügen, falls E-Mail eindeutig sein soll
+	// Prüfen, ob die E-Mail bereits existiert
+	if existingUser, _ := s.UserService.GetUserByEmail(req.Email); existingUser != nil {
+		return errors.New("E-Mail-Adresse ist bereits registriert")
+	}
 
 	// Salt generieren (für Frontend-Schlüsselableitung)
 	salt, err := security.GenerateSalt(security.PBKDF2SaltLen)

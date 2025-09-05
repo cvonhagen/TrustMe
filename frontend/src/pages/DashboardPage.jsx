@@ -44,6 +44,7 @@ import { useThemeContext } from "../ThemeContext";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 
+
 const DashboardPage = () => {
   const [passwords, setPasswords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -448,6 +449,8 @@ const DashboardPage = () => {
               </Button>
             </Box>
           </Box>
+
+
 
           <TextField
             label="Passwörter suchen..."

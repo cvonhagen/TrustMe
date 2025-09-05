@@ -81,6 +81,19 @@ const LoginPage = () => {
     e.preventDefault(); // Standardformularübermittlung verhindern
     setLoginError(null); // Vorherige Fehler zurücksetzen
 
+    // E-Mail-Validierung
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setLoginError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return;
+    }
+
+    // Passwort-Stärke-Validierung
+    if (masterPassword.length < 8) {
+      setLoginError('Das Master-Passwort muss mindestens 8 Zeichen lang sein.');
+      return;
+    }
+
     try {
       // API-Aufruf zur Benutzerregistrierung
       await registerUser({ username, email, master_password: masterPassword });
@@ -149,8 +162,15 @@ const LoginPage = () => {
           {isLogin ? 'Anmelden' : 'Registrieren'}
         </Typography>
         
-        {/* Anzeige von Fehlermeldungen */}
-        {loginError && <Alert severity="error" sx={{ mt: 2, mb: 3 }}>{loginError}</Alert>}
+        {/* Anzeige von Fehlermeldungen oder Erfolgsmeldungen */}
+        {loginError && (
+          <Alert 
+            severity={loginError.includes('erfolgreich') ? 'success' : 'error'} 
+            sx={{ mt: 2, mb: 3 }}
+          >
+            {loginError}
+          </Alert>
+        )}
 
         {/* Conditional Rendering des Login-/Registrierungsformulars oder 2FA-Eingabefelds */}
         {!showTwoFAInput ? (
@@ -178,10 +198,12 @@ const LoginPage = () => {
                 id="email"
                 label="E-Mail-Adresse"
                 name="email"
+                type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 sx={{ mb: 2 }}
+                helperText="Geben Sie eine gültige E-Mail-Adresse ein"
               />
             )}
             {/* Master-Passwort-Eingabefeld */}
@@ -197,6 +219,7 @@ const LoginPage = () => {
               value={masterPassword}
               onChange={(e) => setMasterPassword(e.target.value)}
               sx={{ mb: 3 }}
+              helperText={!isLogin ? "Mindestens 8 Zeichen für maximale Sicherheit" : ""}
             />
             {/* Anmelden/Registrieren Button */}
             <Button

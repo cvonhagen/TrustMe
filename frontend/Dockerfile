@@ -1,32 +1,36 @@
-# Build-Stage
-FROM node:18-alpine as build
+# Multi-stage build für TrustMe Frontend
+FROM node:18-alpine AS builder
 
-# Setze Arbeitsverzeichnis
+# Arbeitsverzeichnis setzen
 WORKDIR /app
 
-# Kopiere package.json und package-lock.json
+# Package files kopieren
 COPY package*.json ./
 
-# Installiere Abhängigkeiten
-RUN npm ci
+# Dependencies installieren
+RUN npm ci --only=production
 
-# Kopiere den Rest der Anwendung
+# Source code kopieren
 COPY . .
 
-# Baue die Anwendung
+# Build für Production
 RUN npm run build
 
-# Produktions-Stage
+# Production stage mit nginx
 FROM nginx:alpine
 
-# Kopiere die Build-Dateien aus dem Build-Stage
-COPY --from=build /app/dist /usr/share/nginx/html
+# Build files kopieren
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Kopiere die Nginx-Konfiguration
+# Nginx Konfiguration kopieren
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Exponiere Port 80
+# Port freigeben
 EXPOSE 80
 
-# Starte Nginx
+# Health Check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+# Nginx starten
 CMD ["nginx", "-g", "daemon off;"] 

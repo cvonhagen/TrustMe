@@ -67,7 +67,7 @@ func initDB() error {
 	// Automatische Tabellen-Migration (User & Password Models)
 	// Erstellt Tabellen nur wenn sie nicht existieren, behält bestehende Daten
 	if err := DB.AutoMigrate(&models.User{}, &models.Password{}); err != nil {
-		return fmt.Errorf("datenbankmigrationen fehlgeschlagen: %w", err)
+		log.Printf("Warnung: Migration fehlgeschlagen: %v", err)
 	}
 
 	return nil
@@ -202,6 +202,7 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 	users.Get("/profile", handlers.User.GetProfile)       // Benutzerprofil abrufen
 	users.Put("/profile", handlers.User.UpdateProfile)    // Benutzerprofil aktualisieren
 	users.Delete("/account", handlers.User.DeleteAccount) // Benutzerkonto löschen
+
 }
 
 // Handlers-Struktur gruppiert alle Handler für die Anwendung.

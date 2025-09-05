@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Typography, Container } from "@mui/material";
+import { Box, Typography, Container, Link } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import layer8Logo from "../assets/layer8.png";
 
 // Fester Footer mit Sternenhimmel-Hintergrund und Layer8-Branding
@@ -78,6 +79,40 @@ const Footer = () => {
             >
               © 2025 Layer8. Alle Rechte vorbehalten.
             </Typography>
+            <Box sx={{ mt: 0.5, display: "flex", gap: 2 }}>
+              <Link
+                component={RouterLink}
+                to="/impressum"
+                sx={{
+                  color: "white",
+                  textDecoration: "none",
+                  fontSize: "0.7rem",
+                  opacity: 0.8,
+                  "&:hover": {
+                    opacity: 1,
+                    textDecoration: "underline",
+                  },
+                }}
+              >
+                Impressum
+              </Link>
+              <Link
+                component={RouterLink}
+                to="/datenschutz"
+                sx={{
+                  color: "white",
+                  textDecoration: "none",
+                  fontSize: "0.7rem",
+                  opacity: 0.8,
+                  "&:hover": {
+                    opacity: 1,
+                    textDecoration: "underline",
+                  },
+                }}
+              >
+                Datenschutz
+              </Link>
+            </Box>
           </Box>
         </Box>
       </Container>

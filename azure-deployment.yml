@@ -18,12 +18,6 @@ data:
   # Database Configuration (Azure Database for PostgreSQL)
   DATABASE_URL: "postgresql://username:password@trustme-db.postgres.database.azure.com:5432/trustme?sslmode=require"
   
-  # Email Configuration (Azure Communication Services)
-  SMTP_HOST: "smtp.azurecomm.net"
-  SMTP_PORT: "587"
-  SMTP_USER: "your-azure-comm-user"
-  SMTP_PASS: "your-azure-comm-password"
-  FROM_EMAIL: "noreply@trustme.com"
 
 ---
 # Backend Container App

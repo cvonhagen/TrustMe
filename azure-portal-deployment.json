@@ -50,7 +50,7 @@
     "frontendAppName": "[concat(variables('resourcePrefix'), '-frontend')]",
     "dbServerName": "[concat(variables('resourcePrefix'), '-db')]",
     "dbName": "trustme",
-    "keyVaultName": "[concat(variables('resourcePrefix')]",
+    "keyVaultName": "[concat(variables('resourcePrefix'))]",
     "containerRegistryName": "[concat(parameters('appName'), 'registry', uniqueString(resourceGroup().id))]"
   },
   "resources": [

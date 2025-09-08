@@ -1,43 +1,85 @@
 version: '3.8'
 
 services:
+  # Backend Service (Go/Fiber) - verwendet externe Neon PostgreSQL DB
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: trustme-backend
     ports:
-      - "8000:3000"
+      - "3030:3030"
     env_file:
-      - ./backend/.env
+      - .env.neon
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+    networks:
+      - trustme-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
+  # Frontend Service (React/Vite Development)
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: trustme-frontend
     ports:
-      - "3000:80"
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:3030/api/v1
+      - VITE_APP_NAME=TrustMe Password Manager
     volumes:
       - ./frontend:/app
-    env_file:
-      - ./frontend/.env
+      - /app/node_modules
     depends_on:
       - backend
+    networks:
+      - trustme-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
-  # browser-extension:
-  #   build: ./browser-extension
-  #   volumes:
-  #     - ./browser-extension:/app
-  #     - /app/node_modules # Anonymes Volume für node_modules
-  #   # Keine Ports oder depends_on, da dies keine laufende Service ist, sondern nur zum Bauen verwendet wird
+  # Browser Extension Build Service (nur für Development)
+  browser-extension:
+    build: 
+      context: ./browser-extension
+      dockerfile: Dockerfile
+    container_name: trustme-extension
+    volumes:
+      - ./browser-extension/dist:/app/dist
+      - ./browser-extension/src:/app/src:ro
+    environment:
+      - BACKEND_URL=http://localhost:3030/api/v1
+      - FRONTEND_URL=http://localhost:5173
+    networks:
+      - trustme-network
+    profiles:
+      - dev
 
-  # db: # Nicht verwendet, da wir Neon.tech verwenden
-  #   image: postgres:13
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data/
-  #   env_file:
-  #     - ./backend/.env # Verwende die gleiche .env für DB-Variablen
-  #   ports:
-  #     - "5432:5432"
-
-# volumes:
-#   postgres_data: # Nicht verwendet
+  # MailHog für lokale E-Mail-Tests (Development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: trustme-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - trustme-network
+    profiles:
+      - dev
 
 networks:
   trustme-network:
     driver: bridge
+    name: trustme-network

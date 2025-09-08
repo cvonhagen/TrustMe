@@ -1,0 +1,209 @@
+name: Azure Container Apps Deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  AZURE_CONTAINER_REGISTRY: trustmeregistry
+  RESOURCE_GROUP: trustme-prod-rg
+  BACKEND_IMAGE_NAME: trustme/backend
+  FRONTEND_IMAGE_NAME: trustme/frontend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      registry-name: ${{ steps.setup.outputs.registry-name }}
+      image-tag: ${{ steps.setup.outputs.image-tag }}
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Variables
+      id: setup
+      run: |
+        # Generate unique registry name and image tag
+        REGISTRY_SUFFIX=$(echo $GITHUB_SHA | cut -c1-8)
+        REGISTRY_NAME="${{ env.AZURE_CONTAINER_REGISTRY }}${REGISTRY_SUFFIX}"
+        IMAGE_TAG="${GITHUB_SHA:0:8}"
+        
+        echo "registry-name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
+        echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "Registry: ${REGISTRY_NAME}"
+        echo "Image Tag: ${IMAGE_TAG}"
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Azure Container Registry
+      run: |
+        az acr login --name ${{ steps.setup.outputs.registry-name }}
+
+    - name: Build and Push Backend Image
+      run: |
+        docker build \
+          --target production \
+          --tag ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.setup.outputs.image-tag }} \
+          --tag ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:latest \
+          ./backend/
+        
+        docker push ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.setup.outputs.image-tag }}
+        docker push ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:latest
+
+    - name: Build and Push Frontend Image
+      run: |
+        docker build \
+          --target production \
+          --tag ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.setup.outputs.image-tag }} \
+          --tag ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:latest \
+          ./frontend/
+        
+        docker push ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.setup.outputs.image-tag }}
+        docker push ${{ steps.setup.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:latest
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Staging
+      run: |
+        az deployment group create \
+          --resource-group ${{ env.RESOURCE_GROUP }}-staging \
+          --template-file azure-container-apps.bicep \
+          --parameters \
+            appName=trustme \
+            environment=staging \
+            containerRegistryName=${{ needs.build.outputs.registry-name }} \
+            dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}"
+
+    - name: Update Container Apps - Staging
+      run: |
+        # Update Backend
+        az containerapp update \
+          --name trustme-staging-backend \
+          --resource-group ${{ env.RESOURCE_GROUP }}-staging \
+          --image ${{ needs.build.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ needs.build.outputs.image-tag }}
+        
+        # Update Frontend
+        az containerapp update \
+          --name trustme-staging-frontend \
+          --resource-group ${{ env.RESOURCE_GROUP }}-staging \
+          --image ${{ needs.build.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ needs.build.outputs.image-tag }}
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Production
+      run: |
+        az deployment group create \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --template-file azure-container-apps.bicep \
+          --parameters \
+            appName=trustme \
+            environment=prod \
+            containerRegistryName=${{ needs.build.outputs.registry-name }} \
+            dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
+            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}"
+
+    - name: Update Container Apps - Production
+      run: |
+        # Update Backend
+        az containerapp update \
+          --name trustme-prod-backend \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ needs.build.outputs.registry-name }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ needs.build.outputs.image-tag }}
+        
+        # Update Frontend  
+        az containerapp update \
+          --name trustme-prod-frontend \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ needs.build.outputs.registry-name }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ needs.build.outputs.image-tag }}
+
+    - name: Run Health Checks
+      run: |
+        # Get URLs
+        BACKEND_URL=$(az containerapp show \
+          --name trustme-prod-backend \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          -o tsv)
+        
+        FRONTEND_URL=$(az containerapp show \
+          --name trustme-prod-frontend \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          -o tsv)
+        
+        # Health Checks
+        echo "Testing Backend Health..."
+        curl -f "https://${BACKEND_URL}/health" || exit 1
+        
+        echo "Testing Frontend..."
+        curl -f "https://${FRONTEND_URL}/" || exit 1
+        
+        echo "✅ Deployment successful!"
+        echo "Frontend: https://${FRONTEND_URL}"
+        echo "Backend: https://${BACKEND_URL}"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy Vulnerability Scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy Scan Results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": {
+      "value": "trustme"
+    },
+    "environment": {
+      "value": "prod"
+    },
+    "dbAdminUsername": {
+      "value": "trustmeadmin"
+    },
+    "dbAdminPassword": {
+      "value": "TrustMe2024!SecureDB#Password"
+    },
+    "jwtSecretKey": {
+      "value": "trustme-jwt-secret-key-2024-production-secure-32-chars-minimum"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+# Azure Container Apps Deployment Configuration
+# TrustMe Password Manager - Production Deployment
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trustme-config
+data:
+  # Frontend Configuration
+  VITE_BACKEND_URL: "https://trustme-backend.azurecontainerapps.io/api/v1"
+  VITE_APP_NAME: "TrustMe Password Manager"
+  
+  # Backend Configuration
+  PORT: "3030"
+  ALLOWED_ORIGINS: "https://trustme-frontend.azurecontainerapps.io,https://trustme.azurestaticapps.net"
+  JWT_SECRET_KEY: "your-jwt-secret-key-here"
+  
+  # Database Configuration (Azure Database for PostgreSQL)
+  DATABASE_URL: "postgresql://username:password@trustme-db.postgres.database.azure.com:5432/trustme?sslmode=require"
+  
+  # Email Configuration (Azure Communication Services)
+  SMTP_HOST: "smtp.azurecomm.net"
+  SMTP_PORT: "587"
+  SMTP_USER: "your-azure-comm-user"
+  SMTP_PASS: "your-azure-comm-password"
+  FROM_EMAIL: "noreply@trustme.com"
+
+---
+# Backend Container App
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trustme-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trustme-backend
+  template:
+    metadata:
+      labels:
+        app: trustme-backend
+    spec:
+      containers:
+      - name: backend
+        image: trustme/backend:latest
+        ports:
+        - containerPort: 3030
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: trustme-config
+              key: PORT
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: trustme-secrets
+              key: database-url
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trustme-secrets
+              key: jwt-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3030
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3030
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# Frontend Container App
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trustme-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trustme-frontend
+  template:
+    metadata:
+      labels:
+        app: trustme-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: trustme/frontend:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: VITE_BACKEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: trustme-config
+              key: VITE_BACKEND_URL
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5

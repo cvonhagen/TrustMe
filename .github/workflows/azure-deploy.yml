@@ -21,6 +21,7 @@ env:
   RESOURCE_GROUP: trustme-prod-rg
   BACKEND_IMAGE_NAME: trustme/backend
   FRONTEND_IMAGE_NAME: trustme/frontend
+  BICEP_TEMPLATE: azure-container-apps.bicep
 
 jobs:
   build:
@@ -32,6 +33,8 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        submodules: false
 
     - name: Setup Variables
       id: setup
@@ -45,6 +48,20 @@ jobs:
         echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
         echo "Registry: ${REGISTRY_NAME}"
         echo "Image Tag: ${IMAGE_TAG}"
+
+    - name: Create Container Registry
+      run: |
+        # Check if registry exists, create if not
+        if ! az acr show --name ${{ steps.setup.outputs.registry-name }} --resource-group ${{ env.RESOURCE_GROUP }} 2>/dev/null; then
+          echo "Creating Container Registry: ${{ steps.setup.outputs.registry-name }}"
+          az acr create \
+            --name ${{ steps.setup.outputs.registry-name }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --sku Basic \
+            --admin-enabled true
+        else
+          echo "Registry ${{ steps.setup.outputs.registry-name }} already exists"
+        fi
 
     - name: Azure Login
       uses: azure/login@v1
@@ -89,23 +106,32 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        submodules: false
 
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Staging
+    - name: Create Resource Group for Staging
+      run: |
+        az group create \
+          --name ${{ env.RESOURCE_GROUP }}-staging \
+          --location "West Europe"
+
+    - name: Deploy Infrastructure to Staging
       run: |
         az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }}-staging \
-          --template-file azure-container-apps.bicep \
+          --template-file ${{ env.BICEP_TEMPLATE }} \
           --parameters \
             appName=trustme \
             environment=staging \
             containerRegistryName=${{ needs.build.outputs.registry-name }} \
             dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
-            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}"
+            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+          --mode Incremental
 
     - name: Update Container Apps - Staging
       run: |
@@ -138,17 +164,24 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Production
+    - name: Create Resource Group for Production
+      run: |
+        az group create \
+          --name ${{ env.RESOURCE_GROUP }} \
+          --location "West Europe"
+
+    - name: Deploy Infrastructure to Production
       run: |
         az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
-          --template-file azure-container-apps.bicep \
+          --template-file ${{ env.BICEP_TEMPLATE }} \
           --parameters \
             appName=trustme \
             environment=prod \
             containerRegistryName=${{ needs.build.outputs.registry-name }} \
             dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD }}" \
-            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}"
+            jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+          --mode Incremental
 
     - name: Update Container Apps - Production
       run: |
@@ -179,12 +212,28 @@ jobs:
           --query properties.configuration.ingress.fqdn \
           -o tsv)
         
-        # Health Checks
+        # Health Checks with retry logic
         echo "Testing Backend Health..."
-        curl -f "https://${BACKEND_URL}/health" || exit 1
+        for i in {1..5}; do
+          if curl -f "https://${BACKEND_URL}/health"; then
+            echo "✅ Backend health check passed"
+            break
+          else
+            echo "⏳ Backend health check failed, retrying in 30s... ($i/5)"
+            sleep 30
+          fi
+        done
         
         echo "Testing Frontend..."
-        curl -f "https://${FRONTEND_URL}/" || exit 1
+        for i in {1..5}; do
+          if curl -f "https://${FRONTEND_URL}/"; then
+            echo "✅ Frontend health check passed"
+            break
+          else
+            echo "⏳ Frontend health check failed, retrying in 30s... ($i/5)"
+            sleep 30
+          fi
+        done
         
         echo "✅ Deployment successful!"
         echo "Frontend: https://${FRONTEND_URL}"

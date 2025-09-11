@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Backend API base URL - matches TrustMe backend configuration
-const API_BASE_URL = 'http://localhost:3030/api/v1';
+const API_BASE_URL = 'http://localhost:8080/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

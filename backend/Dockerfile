@@ -35,14 +35,14 @@ COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /app/main /main
 
 # Port freigeben
-EXPOSE 3030
+EXPOSE 8080
 
 # Benutzer-ID für Security
 USER 65534:65534
 
 # Health Check (ohne spezielle Health Check Flags)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3030/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Anwendung starten
 ENTRYPOINT ["/main"]
@@ -69,7 +69,7 @@ RUN go mod download
 COPY . .
 
 # Port freigeben
-EXPOSE 3030
+EXPOSE 8080
 
 # Development-Server mit Hot Reload starten
 CMD ["air", "-c", ".air.toml"]

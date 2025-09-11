@@ -52,7 +52,7 @@ Eine sichere Browser-Extension für den TrustMe Password Manager mit End-to-End 
 
 Die Extension ist standardmäßig für die lokale Entwicklung konfiguriert:
 
-- **Backend API**: `http://localhost:3030/api/v1`
+- **Backend API**: `http://localhost:8080/api/v1`
 - **Web-App**: `http://localhost:5173`
 
 Für die Produktion müssen diese URLs in folgenden Dateien angepasst werden:

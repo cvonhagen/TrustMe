@@ -16,7 +16,7 @@ npm run build
 5. Die TrustMe Extension erscheint in der Toolbar
 
 ### 3. Extension verwenden
-1. **Backend starten**: Stelle sicher, dass das TrustMe Backend läuft (`http://localhost:3030`)
+1. **Backend starten**: Stelle sicher, dass das TrustMe Backend läuft (`http://localhost:8080`)
 2. **Extension-Icon klicken**: Klicke auf das TrustMe-Icon in der Chrome-Toolbar
 3. **Anmelden**: Verwende deine TrustMe-Anmeldedaten
 4. **Passwörter verwenden**: Die Extension zeigt automatisch relevante Passwörter für die aktuelle Website
@@ -26,7 +26,7 @@ npm run build
 ### Voraussetzungen
 - Node.js (v14 oder höher)
 - Chrome Browser
-- TrustMe Backend läuft auf `localhost:3030`
+- TrustMe Backend läuft auf `localhost:8080`
 
 ### Development Setup
 ```bash
@@ -123,7 +123,7 @@ Die Extension benötigt minimale Berechtigungen:
 - Prüfe die Chrome Extension Console auf Fehler
 
 ### Login funktioniert nicht
-- Überprüfe, ob das Backend läuft (`http://localhost:3030`)
+- Überprüfe, ob das Backend läuft (`http://localhost:8080`)
 - Prüfe die Netzwerk-Registerkarte in den DevTools
 - Stelle sicher, dass CORS korrekt konfiguriert ist
 

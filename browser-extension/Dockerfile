@@ -54,9 +54,14 @@ WORKDIR /app
 # Source code kopieren
 COPY . .
 
-# Watch-Script für Development
-RUN echo '#!/bin/sh\nwhile true; do\n  echo "Watching for changes..."\n  sleep 5\ndone' > watch.sh && \
-    chmod +x watch.sh
+# Build-Verzeichnis erstellen und Extension-Dateien kopieren
+RUN mkdir -p dist && \
+    cp -r src/* dist/ 2>/dev/null || true && \
+    cp *.html dist/ 2>/dev/null || true && \
+    cp *.js dist/ 2>/dev/null || true && \
+    cp *.css dist/ 2>/dev/null || true && \
+    cp -r icons dist/ 2>/dev/null || true && \
+    cp manifest.json dist/manifest.json
 
-# Development-Modus
-CMD ["./watch.sh"]
+# Watch-Script für Development direkt im CMD
+CMD ["sh", "-c", "echo 'Browser Extension Development Mode - Files built in dist/' && echo 'Extension files ready for loading in browser' && while true; do sleep 30; echo 'Extension container running...'; done"]

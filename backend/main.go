@@ -171,13 +171,13 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 
 	// Authentifizierungsrouten (öffentlich zugänglich)
 	auth := api.Group("/auth")
-	auth.Post("/register", handlers.Auth.Register)                       // Benutzerregistrierung
-	auth.Post("/login", handlers.Auth.Login)                             // Benutzeranmeldung
-	auth.Post("/verify-email", handlers.Auth.VerifyEmail)                // E-Mail-Verifizierung (öffentlich)
+	auth.Post("/register", handlers.Auth.Register)                           // Benutzerregistrierung
+	auth.Post("/login", handlers.Auth.Login)                                 // Benutzeranmeldung
+	auth.Post("/verify-email", handlers.Auth.VerifyEmail)                    // E-Mail-Verifizierung (öffentlich)
 	auth.Post("/resend-verification", handlers.Auth.ResendVerificationEmail) // Verifizierungs-E-Mail erneut senden (öffentlich)
-	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)   // Token validieren (geschützt)
-	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)           // Benutzerabmeldung (geschützt)
-	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount) // Account löschen (geschützt)
+	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)       // Token validieren (geschützt)
+	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)               // Benutzerabmeldung (geschützt)
+	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount)     // Account löschen (geschützt)
 
 	// Passwortverwaltungsrouten (geschützt, erfordert Authentifizierung)
 	passwords := api.Group("/passwords", AuthRequired())

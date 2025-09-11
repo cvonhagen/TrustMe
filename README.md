@@ -148,7 +148,7 @@ Dat Projekt kann auch mit Docker laufen. Dat macht alles einfacher, weil alle Te
 
 ```bash
 # Alles auf einmal anmachen (mit MailHog für E-Mail-Tests)
-docker-compose --profile dev up -d --build
+docker-compose up --build
 
 # Einzelne Services checken
 docker-compose ps

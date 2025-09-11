@@ -63,8 +63,6 @@ services:
       - FRONTEND_URL=http://localhost:5173
     networks:
       - trustme-network
-    profiles:
-      - dev
 
   # MailHog für lokale E-Mail-Tests (Development)
   mailhog:
@@ -75,8 +73,6 @@ services:
       - "8025:8025"
     networks:
       - trustme-network
-    profiles:
-      - dev
 
 networks:
   trustme-network:

@@ -140,6 +140,106 @@ TrustMe/
     └── generate_data.js   # Macht Testdaten über die Hintertür (API)
 ```
 
+## 🐳 Docker Support
+
+Dat Projekt kann auch mit Docker laufen. Dat macht alles einfacher, weil alle Teile in eigene Kästen gepackt sind:
+
+### Mit Docker starten
+
+```bash
+# Alles auf einmal anmachen (mit MailHog für E-Mail-Tests)
+docker-compose --profile dev up -d --build
+
+# Einzelne Services checken
+docker-compose ps
+
+# Logs angucken
+docker-compose logs backend
+docker-compose logs frontend
+docker-compose logs browser-extension
+docker-compose logs mailhog
+```
+
+### Wat läuft wo?
+
+- **Backend**: `http://localhost:8080` (Go/Fiber API)
+- **Frontend**: `http://localhost:5173` (React/Vite)
+- **MailHog**: `http://localhost:8025` (E-Mail-Interface zum Testen)
+- **Browser Extension**: Dateien in `browser-extension/dist/`
+
+### Alles wieder ausmachen
+
+```bash
+docker-compose down
+```
+
+## 🔧 Troubleshooting - "Failed to fetch" Problem
+
+### Das Problem wat dat?
+
+Wennze "Failed to fetch" Fehler kriegs, dann is dat meist so, datte Services nich richtig miteinander klönen können. Dat Problem lag oft daran, datte API-URLs noch aufde falschen Ports gehangen haben.
+
+### Wat haben wa behoben?
+
+**🔧 Port-Konsistenz hergestellt:**
+- **Backend**: Läuft jetz aufm Port **8080** (nich mehr 3030)
+- **Frontend**: Zeigt aufn richtigen Backend-Port **8080**
+- **Browser Extension**: Alle API-Calls verwenden Port **8080**
+- **MailHog**: SMTP aufm Port **1025**, Web-Interface aufm **8025**
+
+**🔧 Docker-Container richtig konfiguriert:**
+- Alle Services laufen in eigenem Netzwerk (`trustme-network`)
+- Health-Checks für Backend und Frontend
+- Hot-Reload für Entwicklung (Air für Backend, Vite für Frontend)
+- MailHog für E-Mail-Tests integriert
+
+**🔧 Browser Extension gefixt:**
+- `watch.sh` Script-Problem behoben
+- Alle API-URLs aufn richtigen Port 8080 gesetzt
+- Manifest-Dateien konsistent gemacht
+- Docker-Build-Prozess optimiert
+
+### Wat mussde checken wenns nich läuft?
+
+1. **Docker läuft**: `docker --version` sollte wat anzeigen
+2. **Services sind up**: `docker-compose ps` - alle sollten "Up" sein
+3. **Backend health**: `curl http://localhost:8080/health` sollte `{"status":"healthy"}` zurückgeben
+4. **Frontend lädt**: `http://localhost:5173` im Browser öffnen
+5. **MailHog läuft**: `http://localhost:8025` für E-Mail-Interface
+
+### Wenns immernoch nich geht:
+
+```bash
+# Alles neu starten
+docker-compose down
+docker-compose --profile dev up -d --build
+
+# Logs checken
+docker-compose logs backend
+docker-compose logs frontend
+
+# Container neu bauen (Cache leeren)
+docker-compose build --no-cache
+```
+
+### Jetz solltet alles laufen!
+
+- **✅ Backend**: Port 8080 (healthy, mit Air hot-reload)
+- **✅ Frontend**: Port 5173 (mit Vite hot-reload)
+- **✅ MailHog**: Ports 1025/8025 (E-Mail-Testing)
+- **✅ Browser Extension**: Alle API-Calls verwenden Port 8080
+- **✅ Database**: PostgreSQL über Neon.tech
+
+Wennze immernoch Probleme has, dann guck dir mal die Container-Logs an:
+
+```bash
+# Alle Logs live verfolgen
+docker-compose logs -f
+
+# Nur Backend-Logs
+docker-compose logs -f backend
+```
+
 ## 🗺️ Wat noch kommt (Zukünftige Erweiterungen)
 
 - Dat mit die Passwoata auf'm Bildschirm noch schöna machen.

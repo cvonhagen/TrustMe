@@ -169,6 +169,44 @@ npm run build:prod
 - **Verschlüsselung**: Vollständige Entschlüsselung ist noch nicht implementiert (Platzhalter vorhanden)
 - **Offline-Modus**: Extension benötigt Internetverbindung zum Backend
 
+## Troubleshooting - "Failed to fetch" Problem
+
+### Das Problem wat dat?
+
+Wennze "Failed to fetch" Fehler kriegs, dann is dat meist so, datte Extension nich richtig mit dem Backend klönen kann. Dat Problem lag daran, datte API-URLs noch aufde falschen Ports gehangen haben.
+
+### Wat haben wa behoben?
+
+**🔧 Inkonsistente Port-Konfigurationen:**
+- **`api/api.js`**: Port 3030 → **✅ 8080** 
+- **`src/services/api.js`**: Port 8000 → **✅ 8080**
+- **`popup.js`**: Port 3030 → **✅ 8080**
+- **Manifest-Datei**: Alle host_permissions aufn richtigen Port gesetzt
+
+**🔧 Docker-Container-Cache:**
+- Images komplett neu gebaut, damitte alten Sachen rausgeflogen sind
+- Alle API-Dateien im `/dist` Verzeichnis manuell korrigiert
+
+**🔧 Dokumentation:**
+- README.md und INSTALLATION.md aufn neuesten Stand gebracht
+- Alle Port-Referenzen aufn richtigen Port 8080 gesetzt
+
+### Wat mussde checken?
+
+1. **Backend läuft**: `http://localhost:8080/health` sollte `{"status":"healthy"}` zurückgeben
+2. **Extension neu laden**: In Chrome Extensions die Extension deaktivieren und wieder aktivieren
+3. **Cache leeren**: Browser-Cache leeren wenns immernoch nich geht
+4. **Container neu starten**: `docker-compose restart browser-extension`
+
+### Jetz solltet alles laufen!
+
+- **✅ Backend**: Port 8080 (healthy)
+- **✅ Frontend**: Port 5173 
+- **✅ MailHog**: Ports 1025/8025
+- **✅ Browser Extension**: Alle API-Calls verwenden Port 8080
+
+Wennze immernoch Probleme has, dann guck dir mal die Browser-Konsole an (F12 → Console) und schau nach Fehlermeldungen.
+
 ## Roadmap
 
 - [ ] Vollständige Verschlüsselungs-/Entschlüsselungsimplementierung

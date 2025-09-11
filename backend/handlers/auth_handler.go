@@ -9,12 +9,16 @@ import (
 
 // AuthHandler handles authentication related requests.
 type AuthHandler struct {
-	AuthService *services.AuthService
+	AuthService  *services.AuthService
+	EmailService *services.EmailService
 }
 
 // NewAuthHandler creates a new AuthHandler instance.
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	return &AuthHandler{AuthService: authService}
+func NewAuthHandler(authService *services.AuthService, emailService *services.EmailService) *AuthHandler {
+	return &AuthHandler{
+		AuthService:  authService,
+		EmailService: emailService,
+	}
 }
 
 // Register handles user registration requests.
@@ -26,15 +30,41 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := h.AuthService.RegisterUser(&req); err != nil {
+	user, err := h.AuthService.RegisterUser(&req)
+	if err != nil {
 		// More specific error handling could be added here based on the error type
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
+	// Verifizierungstoken generieren
+	token, err := h.EmailService.GenerateVerificationToken()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler beim Generieren des Verifizierungstokens",
+		})
+	}
+
+	// Token in Neon DB speichern
+	if err := h.EmailService.SetVerificationToken(user.ID, token); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler beim Speichern des Verifizierungstokens in der Datenbank",
+		})
+	}
+
+	// E-Mail senden (nur wenn DB-Speicherung erfolgreich)
+	if err := h.EmailService.SendVerificationEmail(user, token); err != nil {
+		// E-Mail-Fehler ist nicht kritisch - User ist registriert und Token ist in DB
+		// Log den Fehler, aber blockiere die Registrierung nicht
+		return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+			"message": "Registrierung erfolgreich! E-Mail-Versand fehlgeschlagen - bitte verwenden Sie 'E-Mail erneut senden'.",
+			"email_error": true,
+		})
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "User registered successfully",
+		"message": "Registrierung erfolgreich! Bitte überprüfen Sie Ihre E-Mails zur Bestätigung.",
 	})
 }
 
@@ -91,5 +121,45 @@ func (h *AuthHandler) ValidateToken(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Token is valid",
 		"user_id": userID,
+	})
+}
+
+// VerifyEmail handles email verification requests.
+func (h *AuthHandler) VerifyEmail(c *fiber.Ctx) error {
+	var req schemas.EmailVerificationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := h.EmailService.VerifyEmail(req.Token); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "E-Mail erfolgreich verifiziert",
+	})
+}
+
+// ResendVerificationEmail handles requests to resend verification emails.
+func (h *AuthHandler) ResendVerificationEmail(c *fiber.Ctx) error {
+	var req schemas.ResendVerificationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := h.EmailService.ResendVerificationEmail(req.Email); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Verifizierungs-E-Mail wurde erneut gesendet",
 	})
 }

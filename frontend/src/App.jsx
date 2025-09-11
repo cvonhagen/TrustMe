@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import TwoFactorSetupPage from './pages/TwoFactorSetupPage';
 import TwoFactorVerifyPage from './pages/TwoFactorVerifyPage';
@@ -29,6 +30,7 @@ function App() {
       <Route path="/welcome" element={<WelcomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/impressum" element={<ImpressumPage />} />
       <Route path="/datenschutz" element={<DatenschutzPage />} />
 

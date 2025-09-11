@@ -38,3 +38,13 @@ type TwoFALoginResponse struct {
 	Token string `json:"token"`
 	Salt  string `json:"salt"`
 }
+
+// EmailVerificationRequest definiert die Struktur für die E-Mail-Verifizierung
+type EmailVerificationRequest struct {
+	Token string `json:"token" binding:"required"` // Verifizierungstoken aus der E-Mail
+}
+
+// ResendVerificationRequest definiert die Struktur für das erneute Senden der Verifizierungs-E-Mail
+type ResendVerificationRequest struct {
+	Email string `json:"email" binding:"required,email"` // E-Mail-Adresse des Benutzers
+}

@@ -8,7 +8,10 @@ import (
 type User struct {
 	ID                   uint       `gorm:"primaryKey"`           // Eindeutige ID des Benutzers
 	Username             string     `gorm:"uniqueIndex;not null"` // Benutzername, muss eindeutig sein und darf nicht null sein
-	Email                string     `gorm:"uniqueIndex"`          // E-Mail-Adresse, muss eindeutig sein
+	Email                string     `gorm:"uniqueIndex;not null"` // E-Mail-Adresse, muss eindeutig sein und darf nicht null sein
+	EmailVerified        bool       `gorm:"default:false"`        // Flag, ob die E-Mail-Adresse verifiziert ist
+	EmailVerificationToken string   `gorm:"type:text"`            // Token für die E-Mail-Verifizierung
+	EmailTokenExpiry     *time.Time // Ablaufzeit des E-Mail-Verifizierungstokens
 	HashedMasterPassword string     `gorm:"type:text;not null"`   // Gehashtes Master-Passwort des Benutzers
 	Salt                 string     `gorm:"type:text;not null"`   // Salt für das Hashing des Master-Passworts
 	TwoFAEnabled         bool       `gorm:"default:false"`        // Flag, ob die Zwei-Faktor-Authentifizierung aktiviert ist

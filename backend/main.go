@@ -173,6 +173,8 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 	auth := api.Group("/auth")
 	auth.Post("/register", handlers.Auth.Register)                       // Benutzerregistrierung
 	auth.Post("/login", handlers.Auth.Login)                             // Benutzeranmeldung
+	auth.Post("/verify-email", handlers.Auth.VerifyEmail)                // E-Mail-Verifizierung (öffentlich)
+	auth.Post("/resend-verification", handlers.Auth.ResendVerificationEmail) // Verifizierungs-E-Mail erneut senden (öffentlich)
 	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)   // Token validieren (geschützt)
 	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)           // Benutzerabmeldung (geschützt)
 	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount) // Account löschen (geschützt)
@@ -217,12 +219,13 @@ type Handlers struct {
 func initServices() *Handlers {
 	userService := services.NewUserService(DB)                // Benutzerdienst erstellen
 	authService := services.NewAuthService(DB, userService)   // Authentifizierungsdienst erstellen
+	emailService := services.NewEmailService(DB)              // E-Mail-Dienst erstellen
 	passwordService := services.NewPasswordService(DB)        // Passwortdienst erstellen
 	twoFAService := services.NewTwoFAService(DB, userService) // 2FA-Dienst erstellen
 
 	// Handler mit den entsprechenden Diensten initialisieren und zurückgeben
 	return &Handlers{
-		Auth:     handlers.NewAuthHandler(authService),
+		Auth:     handlers.NewAuthHandler(authService, emailService),
 		Password: handlers.NewPasswordHandler(passwordService, userService),
 		TwoFA:    handlers.NewTwoFAHandler(twoFAService, userService),
 		User:     handlers.NewUserHandler(userService),
@@ -305,7 +308,7 @@ func main() {
 	gracefulShutdown(app)
 
 	// Server starten
-	port := getEnv("PORT", "3030") // Port aus Umgebungsvariable oder Standardport 3030
+	port := getEnv("PORT", "8080") // Port aus Umgebungsvariable oder Standardport 8080
 
 	// Server an angegebenem Port lauschen
 	if err := app.Listen(":" + port); err != nil {

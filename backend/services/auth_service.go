@@ -25,27 +25,27 @@ func NewAuthService(db *gorm.DB, userService *UserService) *AuthService {
 
 // RegisterUser registriert einen neuen Benutzer in der Datenbank.
 // Es hasht das Master-Passwort und speichert den Benutzer.
-func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
+func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, error) {
 	// Prüfen, ob der Benutzername bereits existiert
 	if existingUser, _ := s.UserService.GetUserByUsername(req.Username); existingUser != nil {
-		return errors.New("Benutzername ist bereits vergeben")
+		return nil, errors.New("Benutzername ist bereits vergeben")
 	}
 
 	// Prüfen, ob die E-Mail bereits existiert
 	if existingUser, _ := s.UserService.GetUserByEmail(req.Email); existingUser != nil {
-		return errors.New("E-Mail-Adresse ist bereits registriert")
+		return nil, errors.New("E-Mail-Adresse ist bereits registriert")
 	}
 
 	// Salt generieren (für Frontend-Schlüsselableitung)
 	salt, err := security.GenerateSalt(security.PBKDF2SaltLen)
 	if err != nil {
-		return fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
+		return nil, fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}
 
 	// Master-Passwort hashen (bcrypt generiert seinen eigenen Salt intern)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.MasterPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("Fehler beim Hashen des Master-Passworts: %w", err)
+		return nil, fmt.Errorf("Fehler beim Hashen des Master-Passworts: %w", err)
 	}
 
 	// Neuen Benutzer erstellen
@@ -55,14 +55,15 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) error {
 		HashedMasterPassword: string(hashedPassword),
 		Salt:                 salt,  // Dieser Salt ist für das Frontend
 		TwoFAEnabled:         false, // 2FA standardmäßig deaktiviert
+		EmailVerified:        false, // E-Mail noch nicht verifiziert
 	}
 
 	// Benutzer in der Datenbank speichern
 	if err := s.UserService.CreateUser(user); err != nil {
-		return fmt.Errorf("Fehler beim Erstellen des Benutzers: %w", err)
+		return nil, fmt.Errorf("Fehler beim Erstellen des Benutzers: %w", err)
 	}
 
-	return nil
+	return user, nil
 }
 
 // LoginUser authentifiziert einen Benutzer anhand seiner Anmeldeinformationen.
@@ -75,6 +76,11 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 	}
 	if user == nil {
 		return nil, errors.New("Ungültige Anmeldeinformationen") // Benutzer nicht gefunden
+	}
+
+	// Prüfen, ob die E-Mail verifiziert ist
+	if !user.EmailVerified {
+		return nil, errors.New("E-Mail-Adresse muss vor der Anmeldung verifiziert werden")
 	}
 
 	// Das bereitgestellte Passwort mit dem gespeicherten Hash vergleichen (ohne den zusätzlichen Salt)

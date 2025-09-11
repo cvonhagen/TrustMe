@@ -6,8 +6,9 @@ import Footer from '../components/Footer';
 
 // RegisterPage-Komponente für die Benutzerregistrierung.
 function RegisterPage() {
-  // Zustandsvariablen für Benutzername, Passwort, Fehler- und Erfolgsmeldungen
+  // Zustandsvariablen für Benutzername, E-Mail, Passwort, Fehler- und Erfolgsmeldungen
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null); // Fehler auf null initialisieren
   const [success, setSuccess] = useState(null); // Erfolg auf null initialisieren
@@ -21,7 +22,7 @@ function RegisterPage() {
     setSuccess(null); // Vorherige Erfolgsmeldungen zurücksetzen
 
     // Clientseitige Validierung der Eingabefelder
-    if (!username || !password) {
+    if (!username || !email || !password) {
       setError('Bitte füllen Sie alle Felder aus.');
       return;
     }
@@ -35,15 +36,15 @@ function RegisterPage() {
       // API-Aufruf zur Registrierung des Benutzers
       await registerUser({ 
         username, 
+        email,
         master_password: password 
       });
 
-      setSuccess('Registrierung erfolgreich! Sie werden zum Login weitergeleitet...');
+      setSuccess('Registrierung erfolgreich! Bitte überprüfen Sie Ihre E-Mails zur Bestätigung.');
       // Felder nach erfolgreicher Registrierung leeren
       setUsername('');
+      setEmail('');
       setPassword('');
-      // Nach 2 Sekunden zum Login-Bildschirm weiterleiten
-      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       // Fehlerbehandlung: Fehlermeldung aus der API-Antwort extrahieren oder generische Nachricht anzeigen.
       setError(err.response?.data?.error || 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.');
@@ -95,6 +96,20 @@ function RegisterPage() {
             autoFocus
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            error={!!error}
+          />
+          {/* E-Mail-Eingabefeld */}
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="E-Mail-Adresse"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             error={!!error}
           />
           {/* Master-Passwort-Eingabefeld */}

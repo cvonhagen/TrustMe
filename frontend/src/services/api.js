@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API-Service für Backend-Kommunikation mit automatischer JWT-Authentifizierung
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3030/api/v1';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api/v1';
 
 let authToken = null; // Globaler JWT-Token für Authentifizierung
 
@@ -27,7 +27,7 @@ export const setAuthToken = (token) => {
 api.interceptors.request.use(
 	config => {
 		// Öffentliche Routen ohne Authentifizierung
-		const publicRoutes = ['/auth/login', '/auth/register'];
+		const publicRoutes = ['/auth/login', '/auth/register', '/auth/verify-email', '/auth/resend-verification'];
 		const isPublicRoute = publicRoutes.some(route => config.url.endsWith(route));
 
     const token = authToken;
@@ -50,6 +50,8 @@ api.interceptors.request.use(
 // === AUTHENTIFIZIERUNG ===
 export const registerUser = (userData) => { return api.post('/auth/register', userData); };
 export const loginUser = (credentials) => { return api.post('/auth/login', credentials); };
+export const verifyEmail = (tokenData) => { return api.post('/auth/verify-email', tokenData); };
+export const resendVerificationEmail = (emailData) => { return api.post('/auth/resend-verification', emailData); };
 
 // === PASSWORT-VERWALTUNG ===
 export const getPasswords = () => { return api.get('/passwords'); }; // Alle verschlüsselten Passwörter
@@ -67,6 +69,9 @@ export const setupTwoFactor = () => { return api.post('/two-factor/setup'); }; /
 export const verifyTwoFactorSetup = (codeData) => { return api.post('/two-factor/setup/verify', codeData); }; // Alias
 
 export const verifyTwoFactorLogin = (credentials) => { return api.post('/two-factor/verify', credentials); }; // Login-2FA
+
+// 2FA deaktivieren
+export const disable2FA = () => { return api.delete('/two-factor/disable'); };
 
 // API-Funktionen für Account-Verwaltung
 // deleteAccount: Löscht den Account des angemeldeten Benutzers permanent.

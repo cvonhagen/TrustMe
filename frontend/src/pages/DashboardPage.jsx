@@ -36,6 +36,7 @@ import {
   deletePassword,
   setup2FA,
   verify2FA,
+  disable2FA,
   deleteAccount,
 } from "../services/api";
 import { decryptData, encryptData } from "../utils/crypto";
@@ -69,6 +70,7 @@ const DashboardPage = () => {
   const [twoFACode, setTwoFACode] = useState("");
   const [twoFAError, setTwoFAError] = useState(null);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState({});
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -345,9 +347,22 @@ const DashboardPage = () => {
       await verify2FA({ code: twoFACode });
       setOpen2FADialog(false);
       setTwoFACode("");
+      setTwoFAEnabled(true);
       alert("2FA erfolgreich aktiviert!");
     } catch (err) {
       setTwoFAError(err.response?.data?.error || "Ungültiger 2FA-Code.");
+    }
+  };
+
+  // 2FA Disable Handler
+  const handleDisable2FA = async () => {
+    try {
+      setTwoFAError(null);
+      await disable2FA();
+      setTwoFAEnabled(false);
+      alert("2FA erfolgreich deaktiviert!");
+    } catch (err) {
+      setTwoFAError(err.response?.data?.error || "Fehler beim Deaktivieren der 2FA.");
     }
   };
 
@@ -616,15 +631,29 @@ const DashboardPage = () => {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 2,
                 }}
               >
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={handle2FASetup}
-                >
-                  2FA aktivieren
-                </Button>
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                  {!twoFAEnabled ? (
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={handle2FASetup}
+                    >
+                      2FA aktivieren
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      onClick={handleDisable2FA}
+                    >
+                      2FA deaktivieren
+                    </Button>
+                  )}
+                </Box>
                 <Button
                   variant="outlined"
                   color="error"

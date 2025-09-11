@@ -9,7 +9,7 @@ services:
       target: development
     container_name: trustme-backend
     ports:
-      - "3030:3030"
+      - "8080:8080"
     env_file:
       - .env.neon
     volumes:
@@ -18,7 +18,7 @@ services:
     networks:
       - trustme-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3030/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,7 +34,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_BACKEND_URL=http://localhost:3030/api/v1
+      - VITE_BACKEND_URL=http://localhost:8080/api/v1
       - VITE_APP_NAME=TrustMe Password Manager
     volumes:
       - ./frontend:/app
@@ -60,7 +60,7 @@ services:
       - ./browser-extension/dist:/app/dist
       - ./browser-extension/src:/app/src:ro
     environment:
-      - BACKEND_URL=http://localhost:3030/api/v1
+      - BACKEND_URL=http://localhost:8080/api/v1
       - FRONTEND_URL=http://localhost:5173
     networks:
       - trustme-network

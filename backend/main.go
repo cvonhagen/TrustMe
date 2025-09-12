@@ -210,6 +210,49 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 	users.Put("/profile", handlers.User.UpdateProfile)    // Benutzerprofil aktualisieren
 	users.Delete("/account", handlers.User.DeleteAccount) // Benutzerkonto löschen
 
+	// TEST-ONLY: Entwicklungs-Routen für Testdaten-Generierung
+	// Diese Route ist NUR in der Entwicklungsumgebung aktiviert
+	if getEnv("NODE_ENV", "development") == "development" {
+		test := api.Group("/test")
+		test.Post("/verify-email/:username", func(c *fiber.Ctx) error {
+			username := c.Params("username")
+
+			// Nur für Testbenutzer erlauben (Sicherheit)
+			if !strings.HasPrefix(username, "testuser_") {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "Nur für Testbenutzer erlaubt",
+				})
+			}
+
+			// Benutzer anhand des Benutzernamens finden
+			var user models.User
+			result := DB.Where("username = ?", username).First(&user)
+			if result.Error != nil {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+					"error": "Benutzer nicht gefunden",
+				})
+			}
+
+			// E-Mail als verifiziert markieren
+			result = DB.Model(&user).Updates(map[string]interface{}{
+				"email_verified":           true,
+				"email_verification_token": nil,
+				"email_token_expiry":       nil,
+			})
+
+			if result.Error != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Fehler beim Aktualisieren der E-Mail-Verifikation",
+				})
+			}
+
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"message":  "E-Mail erfolgreich als verifiziert markiert",
+				"username": username,
+			})
+		})
+	}
+
 }
 
 // Handlers-Struktur gruppiert alle Handler für die Anwendung.

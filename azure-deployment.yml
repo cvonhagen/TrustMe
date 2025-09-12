@@ -14,12 +14,15 @@ data:
   VITE_APP_NAME: "TrustMe Password Manager"                                   # App-Name für UI-Display
   
   # Backend-Konfiguration für Go-API
-  PORT: "8080"                                                                 # Server-Port (konsistent mit lokaler Entwicklung)
+  PORT: "8080"                                                                 # Server-Port (konsistent mit lokalem Setup)
+  NODE_ENV: "production"                                                       # Production-Modus
   ALLOWED_ORIGINS: "https://trustme-frontend.azurecontainerapps.io,https://trustme.azurestaticapps.net"  # CORS-Policy
-  JWT_SECRET_KEY: "your-jwt-secret-key-here"                                 # TODO: Durch Azure Key Vault ersetzen!
   
-  # Datenbank-Verbindung zu Azure PostgreSQL
-  DATABASE_URL: "postgresql://username:password@trustme-db.postgres.database.azure.com:5432/trustme?sslmode=require"
+  # E-Mail-Konfiguration für Production
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  FROM_EMAIL: "noreply@trustme.com"
+  BASE_URL: "https://trustme-frontend.azurecontainerapps.io"
   
 
 ---

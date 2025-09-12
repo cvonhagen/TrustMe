@@ -4,8 +4,8 @@ const crypto = require('crypto'); // Node.js built-in crypto module
 const API_BASE_URL = 'http://localhost:8080/api/v1'; // Backend-API für Testdaten-Generierung
 const BASE_TEST_PASSWORD = 'TestPassword123!'; // Base password for all test users
 
-const NUM_USERS = 10; // Anzahl der zu erstellenden Testbenutzer (für 100.000 Datensätze)
-const NUM_PASSWORDS_PER_USER = 10000; // Anzahl der Passworteinträge pro Benutzer (für 100.000 Datensätze)
+const NUM_USERS = 5; // Anzahl der zu erstellenden Testbenutzer (für 100.000 Datensätze)
+const NUM_PASSWORDS_PER_USER = 10; // Anzahl der Passworteinträge pro Benutzer (für 100.000 Datensätze)
 
 // PBKDF2 parameters - must match backend/frontend (from backend/security/security.go)
 const pbkdf2Iterations = 250000;
@@ -58,10 +58,12 @@ const encryptData = (data, keyBuffer) => {
 
 // Main function to generate data
 const generateData = async () => {
+    const timestamp = Date.now(); // Eindeutiger Zeitstempel
     console.log(`Starting data generation: ${NUM_USERS} users, ${NUM_PASSWORDS_PER_USER} passwords per user (Total: ${NUM_USERS * NUM_PASSWORDS_PER_USER} entries)`);
+    console.log(`Using timestamp: ${timestamp} for unique usernames`);
 
     for (let i = 1; i <= NUM_USERS; i++) {
-        const username = `testuser_${i}`;
+        const username = `testuser_${timestamp}_${i}`; // Eindeutige Benutzernamen
         const password = BASE_TEST_PASSWORD;
 
         try {
@@ -76,7 +78,12 @@ const generateData = async () => {
             });
             console.log('User registered successfully.');
 
-            // 2. Login User to get JWT and Salt
+            // 2. Für Testdaten: E-Mail direkt als verifiziert markieren
+            console.log('Setze E-Mail als verifiziert für Testdaten...');
+            await axios.post(`${API_BASE_URL}/test/verify-email/${username}`);
+            console.log('E-Mail erfolgreich als verifiziert markiert.');
+            
+            // 3. Login User to get JWT and Salt
             console.log('Logging in user...');
             const loginResponse = await axios.post(`${API_BASE_URL}/auth/login`, {
                 username: username,

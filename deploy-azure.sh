@@ -103,16 +103,19 @@ setup_container_registry() {
 build_images() {
     log "Baue Docker Images..."
     
-    # Backend Image
+    # Backend Image mit Production-Target
     log "Baue Backend Image..."
     docker build -t "${CONTAINER_REGISTRY}.azurecr.io/trustme/backend:latest" \
         --target production \
+        --file ./backend/Dockerfile \
         ./backend/
     
-    # Frontend Image
+    # Frontend Image mit Production-Target
     log "Baue Frontend Image..."
     docker build -t "${CONTAINER_REGISTRY}.azurecr.io/trustme/frontend:latest" \
         --target production \
+        --build-arg VITE_BACKEND_URL=https://${APP_NAME}-${ENVIRONMENT}-backend.azurecontainerapps.io/api/v1 \
+        --file ./frontend/Dockerfile \
         ./frontend/
     
     success "Docker Images erfolgreich gebaut"

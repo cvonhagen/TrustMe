@@ -23,7 +23,8 @@ COPY . .
 
 # Vite Production-Build: Optimierte, minifizierte Assets
 # Erstellt dist/ Verzeichnis mit statischen Dateien für Nginx
-RUN npm run build                     # Vite Build -> /app/dist/
+# Vite Build -> /app/dist/
+RUN npm run build
 
 # Production Stage: Nginx für hochperformantes Static-File-Serving
 # Alpine-basiert für minimale Image-Größe und Security
@@ -48,7 +49,8 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /etc/nginx/conf.d
 
 # HTTP-Port für Frontend-Zugriff
-EXPOSE 80                             # Standard HTTP-Port
+# Standard HTTP-Port
+EXPOSE 80
 
 # Container-Gesundheitsprüfung für Orchestrierung
 # Prüft ob Nginx reagiert und React-App erreichbar ist
@@ -59,14 +61,16 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 USER nginx
 
 # Nginx im Foreground starten (Docker-konform)
-CMD ["nginx", "-g", "daemon off;"]     # -g daemon off verhindert Background-Modus
+# -g daemon off verhindert Background-Modus
+CMD ["nginx", "-g", "daemon off;"]
 
 # Development Stage: Feature-reiche Umgebung für lokale Entwicklung
 # Enthält Vite Dev-Server mit Hot-Module-Replacement (HMR)
 FROM node:18-alpine AS development
 
 # Development-Tools für Debugging und Testing
-RUN apk add --no-cache git curl       # Git + HTTP-Tools für API-Tests
+# Git + HTTP-Tools für API-Tests
+RUN apk add --no-cache git curl
 
 # Development-Arbeitsverzeichnis
 WORKDIR /app
@@ -76,13 +80,15 @@ COPY package*.json ./
 
 # Alle Dependencies installieren (Production + Development)
 # Inklusive Testing-Tools, Linter, Type-Checker
-RUN npm install                       # Vollständige Installation für Development
+# Vollständige Installation für Development
+RUN npm install
 
 # Source-Code für Live-Editing (wird via Volume gemountet)
 COPY . .
 
 # Vite Dev-Server Port
-EXPOSE 5173                           # Vite Default-Port
+# Vite Default-Port
+EXPOSE 5173
 
 # Vite Development-Server mit HMR starten
 # --host 0.0.0.0 ermöglicht Container-externe Zugriffe

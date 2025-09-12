@@ -1,5 +1,6 @@
-// TrustMe Password Manager Backend
+// TrustMe Password Manager Backend - Haupteinstiegspunkt
 // Sichere REST API mit JWT-Authentifizierung und client-seitiger Verschlüsselung
+// Verwendet Go Fiber-Framework für hohe Performance und PostgreSQL als Datenbank
 package main
 
 import (
@@ -27,9 +28,11 @@ import (
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB // Globale Datenbankverbindung
+var DB *gorm.DB // Globale Datenbankverbindung - wird von allen Services geteilt
 
 // Datenbank-Initialisierung mit PostgreSQL und GORM
+// Verbindet sich mit Neon.tech PostgreSQL-Datenbank über DATABASE_URL
+// Konfiguriert Verbindungspool für optimale Performance
 func initDB() error {
 	// .env-Datei laden (optional)
 	if err := godotenv.Load(); err != nil {
@@ -74,6 +77,8 @@ func initDB() error {
 }
 
 // JWT-Authentifizierungs-Middleware für geschützte Routen
+// Prüft Authorization-Header, validiert JWT-Token und extrahiert User-ID
+// Macht User-ID über c.Locals("userID") für Handler verfügbar
 func AuthRequired() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Authorization-Header prüfen

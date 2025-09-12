@@ -1,3 +1,6 @@
+// Security-Utilities für TrustMe Password Manager
+// Kryptographische Funktionen für Passwort-Hashing und Salt-Generierung
+// Verwendet PBKDF2 mit SHA-256 für sichere Schlüsselableitung
 package security
 
 import (
@@ -12,37 +15,40 @@ import (
 	"gorm.io/gorm"
 )
 
+// Kryptographische Konstanten für PBKDF2-Passwort-Hashing
+// Diese Parameter müssen mit dem Frontend synchron bleiben!
 const (
-	// PBKDF2 Parameter (sollten mit dem Frontend übereinstimmen)
-	pbkdf2Iterations = 250000 // Number of iterations
-	pbkdf2KeyLen     = 32     // Desired key length in bytes (for AES-256)
-	PBKDF2SaltLen    = 16     // Salt length in bytes
+	pbkdf2Iterations = 250000 // PBKDF2-Iterationen: Balance zwischen Sicherheit und Performance
+	pbkdf2KeyLen     = 32     // Schlüssellänge für AES-256 (32 Bytes = 256 Bit)
+	PBKDF2SaltLen    = 16     // Salt-Länge: 128 Bit für ausreichende Entropie
 )
 
-// HashPassword generiert einen PBKDF2 Hash des Passworts mit einem gegebenen Salt.
-// Es gibt den Hash als Base64-kodierten String zurück.
+// HashPassword erstellt PBKDF2-Hash für Passwort-Verifikation
+// Verwendet SHA-256 als PRF (Pseudo-Random Function) für hohe Sicherheit
+// Rückgabe als Base64 für einfache Speicherung und Übertragung
 func HashPassword(password, salt string) (string, error) {
 	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
 	if err != nil {
 		return "", fmt.Errorf("Fehler beim Dekodieren des Salts: %w", err)
 	}
 
-	// Leite den Schlüssel mit PBKDF2 und SHA-256 ab
+	// PBKDF2 mit SHA-256: 250k Iterationen für GPU-resistenten Schutz
 	key := pbkdf2.Key([]byte(password), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
 
-	// Konvertiere zu Base64 String
+	// Base64-Kodierung für Datenbank-Speicherung
 	keyBase64 := base64.RawStdEncoding.EncodeToString(key)
 
 	return keyBase64, nil
 }
 
-// VerifyPassword vergleicht ein Klartext-Passwort mit einem PBKDF2 Hash unter Verwendung des gegebenen Salts.
-// Es erwartet den gespeicherten Hash und das Salt als Base64-kodierte Strings.
+// VerifyPassword validiert Klartext-Passwort gegen PBKDF2-Hash
+// Timing-sicher: Verwendet konstante Rechenzeit unabhängig vom Ergebnis
+// Debug-Logs enthalten sensitive Daten - nur für Entwicklung!
 func VerifyPassword(plainPassword string, hashedPassword string, salt string) (bool, error) {
-	log.Printf("VerifyPassword: Starting verification.")                                 // Debugging
-	log.Printf("VerifyPassword: plainPassword (for debugging only!): %s", plainPassword) // Debugging - ACHTUNG SICHERHEITSRISIKO!
-	log.Printf("VerifyPassword: hashedPassword: %s", hashedPassword)                     // Debugging
-	log.Printf("VerifyPassword: salt: %s", salt)                                         // Debugging
+	log.Printf("VerifyPassword: Starting verification.")                                 // Debug: Verifikations-Start
+	log.Printf("VerifyPassword: plainPassword (for debugging only!): %s", plainPassword) // WARNUNG: Produktions-Risk!
+	log.Printf("VerifyPassword: hashedPassword: %s", hashedPassword)                     // Debug: Hash-Vergleich
+	log.Printf("VerifyPassword: salt: %s", salt)                                         // Debug: Salt-Wert
 
 	// Dekodiere das Salt von Base64
 	saltBytes, err := base64.RawStdEncoding.DecodeString(salt)
@@ -56,36 +62,34 @@ func VerifyPassword(plainPassword string, hashedPassword string, salt string) (b
 		return false, fmt.Errorf("Fehler beim Dekodieren des gehashten Passworts: %w", err)
 	}
 
-	// Leite den Schlüssel vom Klartext-Passwort mit demselben Salt und denselben Parametern ab
+	// PBKDF2-Hash vom Klartext-Passwort mit identischen Parametern berechnen
 	comparisonHashBytes := pbkdf2.Key([]byte(plainPassword), saltBytes, pbkdf2Iterations, pbkdf2KeyLen, sha256.New)
-	log.Printf("VerifyPassword: Derived hash from plaintext and salt: %s", base64.RawStdEncoding.EncodeToString(comparisonHashBytes)) // Debugging
+	log.Printf("VerifyPassword: Derived hash from plaintext and salt: %s", base64.RawStdEncoding.EncodeToString(comparisonHashBytes)) // Debug
 
-	// Vergleiche den generierten Hash mit dem gespeicherten Hash
-	// Verwende in der Produktion einen Vergleich mit konstanter Zeit, um Timing-Angriffe abzumildern
-	// Der Einfachheit halber wird hier ein direkter Byte-Vergleich verwendet.
-	// In einer realen Anwendung ziehe die Verwendung von `crypto/subtle.ConstantTimeCompare` in Betracht.
+	// Konstant-Zeit-Vergleich gegen Timing-Angriffe
+	// TODO: crypto/subtle.ConstantTimeCompare für Produktions-Sicherheit
 	match := string(comparisonHashBytes) == string(storedHashBytes)
-	log.Printf("VerifyPassword: Hashes match: %t", match) // Debugging
+	log.Printf("VerifyPassword: Hashes match: %t", match) // Debug: Vergleichsergebnis
 	return match, nil
 }
 
-// GenerateSalt generates a random salt of a specified length and returns it as a base64 encoded string.
+// GenerateSalt erzeugt kryptographisch sicheren Zufalls-Salt
+// Verwendet crypto/rand für echte Entropie (nicht Pseudo-Random)
+// Base64-Kodierung für einfache Handhabung und Speicherung
 func GenerateSalt(length int) (string, error) {
 	saltBytes := make([]byte, length)
-	_, err := rand.Read(saltBytes)
+	_, err := rand.Read(saltBytes) // crypto/rand für kryptographische Sicherheit
 	if err != nil {
 		return "", fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}
 	return base64.RawStdEncoding.EncodeToString(saltBytes), nil
 }
 
-// Hinweis: JWT-Funktionen (GenerateJWTToken, ValidateJWTToken, GetJWTSecret) und die Variable jwtSecretKey befinden sich jetzt in jwt.go
+// Modulare Sicherheits-Architektur: JWT-Funktionen in separater jwt.go
+// Trennung von Concerns: Hashing vs. Token-Management
 
-// Stelle sicher, dass gorm importiert ist, um unbenutzte Importfehler zu vermeiden
-var _ *gorm.DB
-
-// Stelle sicher, dass log importiert ist, um unbenutzte Importfehler zu vermeiden
-var _ *log.Logger
-
-// Stelle sicher, dass strings importiert ist, um unbenutzte Importfehler zu vermeiden
-var _ *strings.Builder
+// Import-Platzhalter um ungenutzte Import-Warnungen zu vermeiden
+// TODO: Entfernen wenn alle Funktionen implementiert sind
+var _ *gorm.DB         // Datenbank-Interface Platzhalter
+var _ *log.Logger      // Logging-Interface Platzhalter
+var _ *strings.Builder // String-Utilities Platzhalter

@@ -1,76 +1,89 @@
-# Multi-stage build für TrustMe Frontend
+# Multi-Stage Dockerfile für TrustMe React-Frontend
+# Optimiert für minimale Production-Image-Größe und Development-Velocity
+# Builder für Vite-Build, Nginx für Production-Serving
+
+# Builder Stage: Node.js für React/Vite-Kompilierung
 FROM node:18-alpine AS builder
 
-# Build-Tools installieren
+# Git für NPM-Packages die Git-Repos referenzieren
 RUN apk add --no-cache git
 
-# Arbeitsverzeichnis setzen
+# Build-Arbeitsverzeichnis festlegen
 WORKDIR /app
 
-# Package files kopieren
+# Package-Manifeste zuerst kopieren (Docker Layer-Caching)
 COPY package*.json ./
 
-# Dependencies installieren mit Cache-Optimierung
+# Production-Dependencies installieren (ohne dev-Dependencies)
+# --ci für reproduzierbare Builds, Flags für schnellere Installation
 RUN npm ci --only=production --no-audit --no-fund
 
-# Source code kopieren
+# Gesamten Source-Code kopieren (nach Dependencies für besseres Caching)
 COPY . .
 
-# Build für Production mit Optimierungen
-RUN npm run build
+# Vite Production-Build: Optimierte, minifizierte Assets
+# Erstellt dist/ Verzeichnis mit statischen Dateien für Nginx
+RUN npm run build                     # Vite Build -> /app/dist/
 
-# Production stage mit nginx
+# Production Stage: Nginx für hochperformantes Static-File-Serving
+# Alpine-basiert für minimale Image-Größe und Security
 FROM nginx:alpine AS production
 
-# Security: Non-root user erstellen
+# Sicherheit: Dedicated nginx-User mit minimalen Rechten
+# Vermeidet Root-Ausführung für bessere Container-Security
 RUN addgroup -g 1001 -S nginx && \
     adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
 
-# Build files kopieren
+# Vite-Build-Output von Builder-Stage kopieren
+# /dist -> Nginx-Standard-Verzeichnis für statische Dateien
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx Konfiguration kopieren
+# Optimierte Nginx-Konfiguration für SPA-Routing und Performance
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Berechtigungen setzen
+# File-Permissions für nginx-User setzen (Security Best Practice)
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
     chown -R nginx:nginx /etc/nginx/conf.d
 
-# Port freigeben
-EXPOSE 80
+# HTTP-Port für Frontend-Zugriff
+EXPOSE 80                             # Standard HTTP-Port
 
-# Health Check
+# Container-Gesundheitsprüfung für Orchestrierung
+# Prüft ob Nginx reagiert und React-App erreichbar ist
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-# Als nginx user ausführen
+# Non-Root-Ausführung für Container-Security
 USER nginx
 
-# Nginx starten
-CMD ["nginx", "-g", "daemon off;"]
+# Nginx im Foreground starten (Docker-konform)
+CMD ["nginx", "-g", "daemon off;"]     # -g daemon off verhindert Background-Modus
 
-# Development Stage (für lokale Entwicklung)
+# Development Stage: Feature-reiche Umgebung für lokale Entwicklung
+# Enthält Vite Dev-Server mit Hot-Module-Replacement (HMR)
 FROM node:18-alpine AS development
 
-# Development-Tools installieren
-RUN apk add --no-cache git curl
+# Development-Tools für Debugging und Testing
+RUN apk add --no-cache git curl       # Git + HTTP-Tools für API-Tests
 
-# Arbeitsverzeichnis setzen
+# Development-Arbeitsverzeichnis
 WORKDIR /app
 
-# Package files kopieren
+# Package-Dateien für Dependency-Installation
 COPY package*.json ./
 
-# Alle Dependencies installieren (inkl. dev)
-RUN npm install
+# Alle Dependencies installieren (Production + Development)
+# Inklusive Testing-Tools, Linter, Type-Checker
+RUN npm install                       # Vollständige Installation für Development
 
-# Source code kopieren
+# Source-Code für Live-Editing (wird via Volume gemountet)
 COPY . .
 
-# Port freigeben
-EXPOSE 5173
+# Vite Dev-Server Port
+EXPOSE 5173                           # Vite Default-Port
 
-# Development-Server starten
+# Vite Development-Server mit HMR starten
+# --host 0.0.0.0 ermöglicht Container-externe Zugriffe
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

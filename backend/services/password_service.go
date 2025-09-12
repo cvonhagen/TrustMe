@@ -1,3 +1,6 @@
+// PasswordService - Verwaltet verschlüsselte Passwort-Einträge
+// Behandelt CRUD-Operationen für client-seitig verschlüsselte Passwörter
+// Unterstützt Batch-Operationen für große Datenmengen
 package services
 
 import (
@@ -8,9 +11,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// PasswordService behandelt passwortbezogene Datenbankoperationen.
+// PasswordService verwaltet alle passwortbezogenen Datenbankoperationen
+// Arbeitet ausschließlich mit bereits verschlüsselten Daten (Zero-Knowledge)
 type PasswordService struct {
-	DB *gorm.DB
+	DB *gorm.DB // Datenbankverbindung für Passwort-CRUD-Operationen
 }
 
 // NewPasswordService erstellt eine neue PasswordService-Instanz.
@@ -18,20 +22,22 @@ func NewPasswordService(db *gorm.DB) *PasswordService {
 	return &PasswordService{DB: db}
 }
 
-// CreatePassword erstellt einen neuen Passwort-Eintrag in der Datenbank.
+// CreatePassword erstellt neuen verschlüsselten Passwort-Eintrag
+// Alle sensiblen Daten werden bereits client-seitig verschlüsselt übergeben
+// Speichert IV und Tag für AES-GCM-Entschlüsselung
 func (s *PasswordService) CreatePassword(userID uint, req *schemas.CreatePasswordRequest) (*models.Password, error) {
 	password := &models.Password{
-		UserID:            userID,
-		WebsiteURL:        req.WebsiteURL,
-		EncryptedUsername: req.EncryptedUsername,
-		UsernameIV:        req.UsernameIV,
-		UsernameTag:       req.UsernameTag,
-		EncryptedPassword: req.EncryptedPassword,
-		PasswordIV:        req.PasswordIV,
-		PasswordTag:       req.PasswordTag,
-		EncryptedNotes:    req.EncryptedNotes,
-		NotesIV:           req.NotesIV,
-		NotesTag:          req.NotesTag,
+		UserID:            userID,                // Verknüpfung zum Benutzer
+		WebsiteURL:        req.WebsiteURL,        // Klartext-URL für Zuordnung
+		EncryptedUsername: req.EncryptedUsername, // AES-verschlüsselter Benutzername
+		UsernameIV:        req.UsernameIV,        // Initialisierungsvektor für Username
+		UsernameTag:       req.UsernameTag,       // Authentifizierungs-Tag für Username
+		EncryptedPassword: req.EncryptedPassword, // AES-verschlüsseltes Passwort
+		PasswordIV:        req.PasswordIV,        // Initialisierungsvektor für Passwort
+		PasswordTag:       req.PasswordTag,       // Authentifizierungs-Tag für Passwort
+		EncryptedNotes:    req.EncryptedNotes,    // AES-verschlüsselte Notizen (optional)
+		NotesIV:           req.NotesIV,           // Initialisierungsvektor für Notizen
+		NotesTag:          req.NotesTag,          // Authentifizierungs-Tag für Notizen
 	}
 
 	if err := s.DB.Create(password).Error; err != nil {
@@ -41,7 +47,9 @@ func (s *PasswordService) CreatePassword(userID uint, req *schemas.CreatePasswor
 	return password, nil
 }
 
-// BatchCreatePasswords erstellt mehrere Passwort-Einträge in einer einzigen Transaktion.
+// BatchCreatePasswords erstellt viele Passwörter in optimierter Transaktion
+// Verwendet GORM's CreateInBatches für bessere Performance bei großen Datenmengen
+// Batch-Größe von 1000 balanciert Speicher und Geschwindigkeit
 func (s *PasswordService) BatchCreatePasswords(userID uint, req *schemas.BatchCreatePasswordRequest) ([]models.Password, error) {
 	var passwordsToCreate []models.Password
 	for _, p := range req.Passwords {
@@ -60,9 +68,9 @@ func (s *PasswordService) BatchCreatePasswords(userID uint, req *schemas.BatchCr
 		})
 	}
 
-	// Transaktion starten
+	// Transaktion für atomare Batch-Operation starten
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// Massen-Einfügung der Passwörter. Batch-Größe von 1000 ist ein guter Startwert.
+		// Optimierte Massen-Einfügung: 1000er-Batches reduzieren Memory-Usage
 		if err := tx.CreateInBatches(passwordsToCreate, 1000).Error; err != nil {
 			return fmt.Errorf("Fehler beim Massen-Erstellen der Passwörter: %w", err)
 		}

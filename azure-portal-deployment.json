@@ -176,7 +176,7 @@
           "activeRevisionsMode": "Single",
           "ingress": {
             "external": true,
-            "targetPort": 3030,
+            "targetPort": 8080,
             "allowInsecure": false,
             "traffic": [
               {
@@ -219,7 +219,7 @@
               "env": [
                 {
                   "name": "PORT",
-                  "value": "3030"
+                  "value": "8080"
                 },
                 {
                   "name": "DATABASE_URL",

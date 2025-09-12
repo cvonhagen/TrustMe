@@ -1,3 +1,6 @@
+// JWT (JSON Web Token) Sicherheitsmodul für TrustMe
+// Verwaltet sichere Token-Generierung und -Validierung für Benutzer-Authentifizierung
+// Verwendet HMAC-SHA256 für Token-Signierung mit konfigurierbarem Secret
 package security
 
 import (
@@ -9,8 +12,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// GetJWTSecret ruft den JWT Secret Key aus den Umgebungsvariablen ab.
-// Wenn der Schlüssel nicht gesetzt ist, wird ein fataler Fehler ausgelöst.
+// GetJWTSecret holt sicherheitskritischen JWT-Schlüssel aus Umgebung
+// Fail-Fast-Pattern: Anwendung startet nicht ohne gültigen Secret
+// Schlüssel sollte mindestens 256-bit (32 Zeichen) für HS256 haben
 func GetJWTSecret() string {
 	key := os.Getenv("JWT_SECRET_KEY")
 	if key == "" {
@@ -19,30 +23,33 @@ func GetJWTSecret() string {
 	return key
 }
 
-// Claims repräsentiert die JWT-Claims-Struktur, die benutzerdefinierte Felder (UserID) und registrierte Claims enthält.
+// Claims definiert JWT-Payload-Struktur mit benutzerdefinierten und Standard-Claims
+// UserID: Eindeutige Benutzer-Identifikation für Autorisierung
+// RegisteredClaims: Standard-JWT-Felder (exp, iat, iss, sub)
 type Claims struct {
-	UserID uint `json:"user_id"` // Benutzer-ID, die im Token gespeichert wird
-	jwt.RegisteredClaims
+	UserID               uint `json:"user_id"` // Benutzer-ID für nachgelagerte Autorisierung
+	jwt.RegisteredClaims      // Standard-JWT-Claims (Expiry, Issuer, etc.)
 }
 
-// GenerateJWTToken generiert einen neuen JWT-Token für die gegebene Benutzer-ID.
-// Der Token ist 24 Stunden gültig.
+// GenerateJWTToken erstellt signierten JWT-Token für authentifizierten Benutzer
+// 24-Stunden Gültigkeit balanciert Sicherheit und Benutzerfreundlichkeit
+// HMAC-SHA256 Signierung bietet optimales Sicherheit/Performance-Verhältnis
 func GenerateJWTToken(userID uint) (string, error) {
 	jwtSecret := GetJWTSecret()
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // Token läuft nach 24 Stunden ab
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                     // Zeitpunkt der Token-Ausstellung
-			Issuer:    "trustme-password-manager",                         // Aussteller des Tokens
-			Subject:   fmt.Sprintf("%d", userID),                          // Betreff des Tokens (Benutzer-ID als String)
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // 24h Sitzungsdauer
+			IssuedAt:  jwt.NewNumericDate(time.Now()),                     // Ausstellungszeit für Audit
+			Issuer:    "trustme-password-manager",                         // Service-Identifikation
+			Subject:   fmt.Sprintf("%d", userID),                          // Benutzer-ID als Token-Subject
 		},
 	}
 
-	// Erstelle einen neuen Token mit HS256 Signaturmethode und den definierten Claims
+	// JWT-Token mit HMAC-SHA256 erstellen (beste Balance Security/Performance)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	// Unterschreibe den Token mit dem Secret Key
+	// Token mit Secret signieren - verhindert Manipulation
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", fmt.Errorf("Fehler beim Signieren des Tokens: %w", err)
@@ -51,31 +58,33 @@ func GenerateJWTToken(userID uint) (string, error) {
 	return tokenString, nil
 }
 
-// ValidateJWTToken validiert den gegebenen JWT-Token und gibt die Benutzer-ID zurück.
-// Bei einem ungültigen oder abgelaufenen Token wird ein Fehler zurückgegeben.
+// ValidateJWTToken prüft Token-Gültigkeit und extrahiert Benutzer-ID
+// Umfassende Validierung: Signatur, Expiry, Claims-Struktur
+// Rückgabe der UserID ermöglicht nachgelagerte Autorisierungsprüfungen
 func ValidateJWTToken(tokenString string) (uint, error) {
 	jwtSecret := GetJWTSecret()
 
-	log.Printf("Validating token: %s", tokenString) // Debug-Ausgabe: Token-String
+	log.Printf("Validating token: %s", tokenString) // Debug: Token-Validierung verfolgen
 
+	// JWT parsen und Claims extrahieren mit Signatur-Verifikation
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		// Überprüfe die Signaturmethode
+		// Signaturmethode verifizieren - nur HMAC-SHA256 akzeptieren
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unerwartete Signaturmethode: %v", token.Header["alg"])
 		}
-		return []byte(jwtSecret), nil // Gebe den Secret Key zur Verifizierung zurück
+		return []byte(jwtSecret), nil // Secret für Signatur-Verifikation
 	})
 
 	if err != nil {
-		log.Printf("Token parsing/validation error: %v", err) // Debug-Ausgabe: Fehler beim Parsen/Validieren
+		log.Printf("Token parsing/validation error: %v", err) // Debug: Parsing-Fehler tracken
 		return 0, fmt.Errorf("failed to parse or validate token: %w", err)
 	}
 
-	// Prüfe, ob die Claims gültig sind und der Token selbst gültig ist
+	// Claims-Typsicherheit und Token-Gültigkeit prüfen
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return 0, fmt.Errorf("Ungültige Token-Claims oder Token ist nicht gültig")
 	}
 
-	return claims.UserID, nil // Gebe die extrahierte Benutzer-ID zurück
+	return claims.UserID, nil // Extrahierte UserID für Autorisierung zurückgeben
 }

@@ -1,7 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto'); // Node.js built-in crypto module
 
-const API_BASE_URL = 'http://localhost:3030/api/v1'; // Your backend URL
+const API_BASE_URL = 'http://localhost:8080/api/v1'; // Backend-API für Testdaten-Generierung
 const BASE_TEST_PASSWORD = 'TestPassword123!'; // Base password for all test users
 
 const NUM_USERS = 10; // Anzahl der zu erstellenden Testbenutzer (für 100.000 Datensätze)

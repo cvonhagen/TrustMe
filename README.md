@@ -1,39 +1,49 @@
 # 🛠️🛠️🛠️ UNDER CONSTRUCTION 🛠️🛠️🛠️
 
+<!-- Haupt-README für TrustMe Password Manager Projekt -->
+<!-- Zentrale Dokumentation für Entwickler und Benutzer -->
+<!-- Enthält Setup-Anweisungen, Architektur-Überblick und Troubleshooting -->
+
 
 
 
 ## 🔒 TrustMe - DEIN Passwoatmangaar 😉 🔑🛡️
 
+<!-- Moderner, sicherer Passwort-Manager mit Zero-Knowledge-Architektur -->
+<!-- Client-seitige Verschlüsselung, 2FA-Unterstützung und Browser-Integration -->
+
 ## ✨ Beschreibung
 
+<!-- Core Value Proposition: Sicherheit + Benutzerfreundlichkeit -->
 TrustMe, dat is son moderner und sicha Passwoatmangaar mit eingebauter Zwei-Faktoar-Autentifizierung (2FA) und sonna paktischen Browser-Erweiterung. Ham wa gemacht, damit de deine digitale Anmeldedaten schön sicha verwalten kans.
 
 ## 🚀 Wat dat alles kann (Features)
 
-- Passwoata sicha wegtun durch starke Verschlüsselung. Keina kommt da ran!
-- Zwei-Faktoar-Autentifizierung (2FA) für noch mehr Sichaheit bei deinem Konto. Doppelt hält besser!
-- Browser-Erweiterung für schnelles Ausfüllen und zackig an deine Passwoata rankommen.
-- Benutzer registrieren und sicha einloggen. Keina schlüppt unterm Tisch durch.
-- Passwoateinträge machen, zeigen, ändern, wegschmeißen. Alles, wat de brauchst.
+<!-- Kern-Features mit Sicherheitsfokus -->
+- Passwoata sicha wegtun durch starke Verschlüsselung. Keina kommt da ran!        <!-- AES-256-GCM client-seitig -->
+- Zwei-Faktoar-Autentifizierung (2FA) für noch mehr Sichaheit bei deinem Konto. Doppelt hält besser!  <!-- TOTP-basiert -->
+- Browser-Erweiterung für schnelles Ausfüllen und zackig an deine Passwoata rankommen.   <!-- Autofill + Popup -->
+- Benutzer registrieren und sicha einloggen. Keina schlüppt unterm Tisch durch.   <!-- JWT + bcrypt -->
+- Passwoateinträge machen, zeigen, ändern, wegschmeißen. Alles, wat de brauchst. <!-- CRUD-Operationen -->
 
 ## 🛠️ Wat wa benutzt ham (Technologie)
 
+<!-- Technologie-Stack mit Begründung für Auswahl -->
 **Hintan (Backend):**
-- Go mit Fiber als Web-Framework. Dat rennt wie die Sau!
-- PostgreSQL Datenbank (Neon.tech). Da kommt dat rein, wat rein muss.
-- GORM als ORM. Damit quasselt die Anwendung mit der Datenbank.
-- PBKDF2 mit SHA-256 für sicheres Passwoat-Hashing. Da beißen sich die Hacker die Zähne aus.
-- AES-256 GCM für die Verschlüsselung von die Passwoatdaten. Richtig dicke Eiche!
-- JWT für dat Einloggen. Dein digitaler Ausweis.
+- Go mit Fiber als Web-Framework. Dat rennt wie die Sau!                         <!-- Performance + Typsicherheit -->
+- PostgreSQL Datenbank (Neon.tech). Da kommt dat rein, wat rein muss.           <!-- Serverless Postgres -->
+- GORM als ORM. Damit quasselt die Anwendung mit der Datenbank.                 <!-- Type-safe DB-Operationen -->
+- PBKDF2 mit SHA-256 für sicheres Passwoat-Hashing. Da beißen sich die Hacker die Zähne aus. <!-- 250k Iterationen -->
+- AES-256 GCM für die Verschlüsselung von die Passwoatdaten. Richtig dicke Eiche!  <!-- Authenticated encryption -->
+- JWT für dat Einloggen. Dein digitaler Ausweis.                               <!-- HMAC-SHA256 Sessions -->
 
 **Vorn (Frontend):**
-- React mit Material UI für die schönen Knöppe und Bildkes.
-- Vite als Werkzeug, dat macht dat schnell.
-- Web Crypto API und CryptoJS für die Zauberei mit die Schlüssel.
+- React mit Material UI für die schönen Knöppe und Bildkes.                  <!-- Moderne UI-Komponenten -->
+- Vite als Werkzeug, dat macht dat schnell.                                     <!-- Lightning-fast HMR -->
+- Web Crypto API und CryptoJS für die Zauberei mit die Schlüssel.              <!-- Browser-native Krypto -->
 
 **Browser-Erweiterunk:**
-- Manifest V3. Dat is sonne Art Bauanleitunk für die Erweiterunk.
+- Manifest V3. Dat is sonne Art Bauanleitunk für die Erweiterunk.              <!-- Modernste Extension-API -->
 
 ## 🏁 Wie de dat ans Laufen krichs (Erste Schritte)
 
@@ -69,7 +79,7 @@ Sieh ma zu, dat die folgenden Sachen auf deinem Rechna sind:
     ```
 4. Erstellt sonne `.env.local`-Datei im `frontend`-Verzeichnis und tut eure Backend-API-URL da rein:
     ```
-    VITE_API_BASE_URL=http://localhost:3030/api/v1
+    VITE_API_BASE_URL=http://localhost:8080/api/v1
     ```
 
 ### Backend anmachen
@@ -80,7 +90,7 @@ Navigiert in dat `backend`-Verzeichnis und führt dat Go-Program an:
 cd backend
 go run main.go
 ```
-Dat Backend müsste dann eigentlich auf `http://localhost:3030` loslegen.
+Dat Backend müsste dann eigentlich auf `http://localhost:8080` loslegen.
 
 ### Frontend anmachen
 

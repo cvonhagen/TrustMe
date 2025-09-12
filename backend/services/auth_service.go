@@ -1,3 +1,6 @@
+// AuthService - Authentifizierungslogik für TrustMe
+// Verwaltet Benutzerregistrierung, Anmeldung und Account-Löschung
+// Arbeitet mit bcrypt für Passwort-Hashing und JWT für Session-Management
 package services
 
 import (
@@ -12,19 +15,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// AuthService behandelt Authentifizierungslogik wie Registrierung und Login.
+// AuthService behandelt alle Authentifizierungsoperationen
+// Arbeitet eng mit UserService zusammen für Benutzer-CRUD-Operationen
 type AuthService struct {
-	DB          *gorm.DB
-	UserService *UserService // Abhängigkeit zum UserService
+	DB          *gorm.DB     // Datenbankverbindung für direkte Operationen
+	UserService *UserService // Service für Benutzer-spezifische Operationen
 }
 
-// NewAuthService erstellt eine neue AuthService-Instanz.
+// NewAuthService erstellt eine neue AuthService-Instanz
+// Dependency Injection Pattern für lose Kopplung der Services
 func NewAuthService(db *gorm.DB, userService *UserService) *AuthService {
 	return &AuthService{DB: db, UserService: userService}
 }
 
-// RegisterUser registriert einen neuen Benutzer in der Datenbank.
-// Es hasht das Master-Passwort und speichert den Benutzer.
+// RegisterUser registriert einen neuen Benutzer mit umfassenden Validierungen
+// Generiert Salt für Frontend-Verschlüsselung und hasht Master-Passwort mit bcrypt
+// Prüft auf doppelte Benutzernamen und E-Mail-Adressen
 func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, error) {
 	// Prüfen, ob der Benutzername bereits existiert
 	if existingUser, _ := s.UserService.GetUserByUsername(req.Username); existingUser != nil {
@@ -36,13 +42,15 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, 
 		return nil, errors.New("E-Mail-Adresse ist bereits registriert")
 	}
 
-	// Salt generieren (für Frontend-Schlüsselableitung)
+	// Salt generieren für Frontend-Verschlüsselung (separat von bcrypt)
+	// Dieser Salt wird für die client-seitige Schlüsselableitung verwendet
 	salt, err := security.GenerateSalt(security.PBKDF2SaltLen)
 	if err != nil {
 		return nil, fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}
 
-	// Master-Passwort hashen (bcrypt generiert seinen eigenen Salt intern)
+	// Master-Passwort mit bcrypt hashen (bcrypt generiert eigenen Salt intern)
+	// Separater Hash-Prozess vom Frontend-Salt für zusätzliche Sicherheit
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.MasterPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("Fehler beim Hashen des Master-Passworts: %w", err)
@@ -66,8 +74,9 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, 
 	return user, nil
 }
 
-// LoginUser authentifiziert einen Benutzer anhand seiner Anmeldeinformationen.
-// Bei erfolgreicher Authentifizierung wird ein JWT-Token generiert und die Benutzerdetails zurückgegeben.
+// LoginUser authentifiziert Benutzer mit umfassenden Sicherheitsprüfungen
+// Validiert E-Mail-Verifizierung, prüft Passwort mit bcrypt und generiert JWT-Token
+// Rückgabe enthält alle für Frontend benötigten Authentifizierungsdaten
 func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginResponse, error) {
 	// Benutzer anhand des Benutzernamens abrufen
 	user, err := s.UserService.GetUserByUsername(req.Username)
@@ -83,7 +92,8 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 		return nil, errors.New("E-Mail-Adresse muss vor der Anmeldung verifiziert werden")
 	}
 
-	// Das bereitgestellte Passwort mit dem gespeicherten Hash vergleichen (ohne den zusätzlichen Salt)
+	// Das bereitgestellte Passwort mit dem bcrypt-Hash vergleichen
+	// bcrypt macht automatisch Salt-Extraktion und Vergleich
 	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedMasterPassword), []byte(req.MasterPassword)); err != nil {
 		return nil, errors.New("Ungültige Anmeldeinformationen") // Passwort stimmt nicht überein
 	}
@@ -104,7 +114,9 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 	}, nil
 }
 
-// DeleteAccount löscht den Account eines Benutzers und alle zugehörigen Daten.
+// DeleteAccount löscht Benutzeraccount und alle verknüpften Daten
+// Transaktionssichere Löschung: erst Passwörter, dann Benutzer
+// GDPR-konform: vollständige Entfernung aller Benutzerdaten
 func (s *AuthService) DeleteAccount(userID uint) error {
 	// Zuerst alle Passwörter des Benutzers löschen
 	if err := s.DB.Where("user_id = ?", userID).Delete(&models.Password{}).Error; err != nil {

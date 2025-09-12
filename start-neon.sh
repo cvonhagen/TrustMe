@@ -54,8 +54,8 @@ check_status() {
     sleep 5
     
     # Backend Health Check
-    if curl -f http://localhost:3030/health >/dev/null 2>&1; then
-        success "Backend ist erreichbar: http://localhost:3030/health"
+    if curl -f http://localhost:8080/health >/dev/null 2>&1; then
+        success "Backend ist erreichbar: http://localhost:8080/health"
     else
         warning "Backend Health Check fehlgeschlagen"
     fi
@@ -63,8 +63,8 @@ check_status() {
     echo ""
     echo "=== TrustMe Services ==="
     echo "Frontend:  http://localhost:3000"
-    echo "Backend:   http://localhost:3030"
-    echo "API Docs:  http://localhost:3030/api/v1"
+    echo "Backend:   http://localhost:8080"
+    echo "API Docs:  http://localhost:8080/api/v1"
     echo "MailHog:   http://localhost:8025 (mit --profile dev)"
     echo ""
 }

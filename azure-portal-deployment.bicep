@@ -140,7 +140,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 3030
+        targetPort: 8080
         allowInsecure: false
         traffic: [
           {

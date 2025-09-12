@@ -1,80 +1,94 @@
+# TrustMe Docker-Compose Konfiguration
+# Orchestriert alle Services für die lokale Entwicklung
+# Jeder Service läuft in seinem eigenen Container mit spezifischen Aufgaben
+
 services:
-  # Backend Service (Go/Fiber) - verwendet externe Neon PostgreSQL DB
+  # Backend Service (Go/Fiber-Framework)
+  # Stellt die REST-API bereit für Authentifizierung, Passwort-Management und User-Verwaltung
+  # Verbindet sich mit externer Neon PostgreSQL-Datenbank (siehe .env.neon)
   backend:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: trustme-backend
+      context: ./backend              # Build-Kontext: Backend-Verzeichnis
+      dockerfile: Dockerfile           # Dockerfile für Go-Anwendung
+      target: development             # Development-Target mit Hot-Reload
+    container_name: trustme-backend   # Eindeutiger Container-Name
     ports:
-      - "8080:8080"
+      - "8080:8080"                   # API-Port: Host:Container
     env_file:
-      - .env.neon
+      - .env.neon                     # Umgebungsvariablen für Neon-DB-Verbindung
     volumes:
-      - ./backend:/app
-      - /app/tmp
+      - ./backend:/app               # Source-Code-Mapping für Live-Änderungen
+      - /app/tmp                      # Temp-Verzeichnis für Build-Cache
     networks:
-      - trustme-network
-    healthcheck:
+      - trustme-network               # Internes Docker-Netzwerk
+    healthcheck:                      # Gesundheitsprüfung der API
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      interval: 30s                   # Prüfung alle 30 Sekunden
+      timeout: 10s                    # Timeout nach 10 Sekunden
+      retries: 3                      # 3 Wiederholungsversuche
+    restart: unless-stopped           # Neustart-Policy bei Fehlern
 
-  # Frontend Service (React/Vite Development)
+  # Frontend Service (React mit Vite)
+  # Stellt die Benutzeroberfläche bereit - modernes React-SPA
+  # Kommuniziert mit Backend über REST-API
   frontend:
     build: 
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: development
-    container_name: trustme-frontend
+      context: ./frontend             # Build-Kontext: Frontend-Verzeichnis
+      dockerfile: Dockerfile          # Dockerfile für React-App
+      target: development            # Development-Modus mit Vite-Dev-Server
+    container_name: trustme-frontend # Eindeutiger Container-Name
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_BACKEND_URL=http://localhost:8080/api/v1
-      - VITE_APP_NAME=TrustMe Password Manager
+      - "5173:5173"                  # Vite-Dev-Server Port
+    environment:                     # Umgebungsvariablen für Frontend
+      - VITE_BACKEND_URL=http://localhost:8080/api/v1  # Backend-API-Basis-URL
+      - VITE_APP_NAME=TrustMe Password Manager         # App-Name für UI
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/app             # Source-Code für Hot-Reload
+      - /app/node_modules            # Node-Module-Cache
     depends_on:
-      - backend
+      - backend                      # Frontend startet nach Backend
     networks:
-      - trustme-network
-    healthcheck:
+      - trustme-network              # Verbindung zum Backend über internes Netz
+    healthcheck:                     # Prüft ob Vite-Server läuft
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
 
-  # Browser Extension Build Service (nur für Development)
+  # Browser Extension Build Service 
+  # Kompiliert die Browser-Erweiterung für Chrome/Firefox
+  # Ermöglicht Autofill und direkten Zugriff auf Passwörter im Browser
   browser-extension:
     build: 
-      context: ./browser-extension
-      dockerfile: Dockerfile
-      target: development
+      context: ./browser-extension   # Build-Kontext: Extension-Verzeichnis
+      dockerfile: Dockerfile          # Dockerfile für Extension-Build
+      target: development            # Development-Build mit Source-Maps
     container_name: trustme-extension
     volumes:
-      - ./browser-extension/dist:/app/dist
-      - ./browser-extension/src:/app/src:ro
-    environment:
-      - BACKEND_URL=http://localhost:8080/api/v1
-      - FRONTEND_URL=http://localhost:5173
+      - ./browser-extension/dist:/app/dist        # Build-Output für Browser
+      - ./browser-extension/src:/app/src:ro       # Source-Code (Read-Only)
+    environment:                     # URLs für Extension-Kommunikation
+      - BACKEND_URL=http://localhost:8080/api/v1  # API-Endpunkt
+      - FRONTEND_URL=http://localhost:5173        # Frontend für Popup-Links
     networks:
-      - trustme-network
+      - trustme-network              # Zugriff auf andere Services
 
-  # MailHog für lokale E-Mail-Tests (Development)
+  # MailHog für lokale E-Mail-Tests
+  # Fängt alle ausgehenden E-Mails ab und zeigt sie in einer Web-UI
+  # Perfekt für Entwicklung - keine echten E-Mails werden versendet
   mailhog:
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:latest   # Offizielles MailHog Docker-Image
     container_name: trustme-mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1025:1025"                 # SMTP-Server für ausgehende E-Mails
+      - "8025:8025"                 # Web-UI für E-Mail-Anzeige (http://localhost:8025)
     networks:
-      - trustme-network
+      - trustme-network              # Verbindung zu Backend für E-Mail-Versand
 
+# Docker-Netzwerk-Konfiguration
+# Ermöglicht Kommunikation zwischen allen Services über Service-Namen
 networks:
   trustme-network:
-    driver: bridge
-    name: trustme-network
+    driver: bridge                  # Standard Bridge-Netzwerk
+    name: trustme-network           # Expliziter Netzwerk-Name

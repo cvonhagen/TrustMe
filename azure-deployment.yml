@@ -1,122 +1,131 @@
-# Azure Container Apps Deployment Configuration
-# TrustMe Password Manager - Production Deployment
+# Azure Container Apps Deployment-Konfiguration für TrustMe
+# Produktive Kubernetes-Manifest für skalierbare Container-Orchestrierung
+# Trennt Frontend, Backend und Datenbank für optimale Performance und Wartung
 
+# ConfigMap für nicht-sensitive Konfigurationsdaten
+# Ermöglicht zentrale Verwaltung von Umgebungsvariablen ohne Container-Rebuild
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: trustme-config
+  name: trustme-config            # Eindeutiger Name für Kubernetes-Ressource
 data:
-  # Frontend Configuration
-  VITE_BACKEND_URL: "https://trustme-backend.azurecontainerapps.io/api/v1"
-  VITE_APP_NAME: "TrustMe Password Manager"
+  # Frontend-Umgebungsvariablen für React-App
+  VITE_BACKEND_URL: "https://trustme-backend.azurecontainerapps.io/api/v1"  # Production Backend-URL (Azure)
+  VITE_APP_NAME: "TrustMe Password Manager"                                   # App-Name für UI-Display
   
-  # Backend Configuration
-  PORT: "3030"
-  ALLOWED_ORIGINS: "https://trustme-frontend.azurecontainerapps.io,https://trustme.azurestaticapps.net"
-  JWT_SECRET_KEY: "your-jwt-secret-key-here"
+  # Backend-Konfiguration für Go-API
+  PORT: "8080"                                                                 # Server-Port (konsistent mit lokaler Entwicklung)
+  ALLOWED_ORIGINS: "https://trustme-frontend.azurecontainerapps.io,https://trustme.azurestaticapps.net"  # CORS-Policy
+  JWT_SECRET_KEY: "your-jwt-secret-key-here"                                 # TODO: Durch Azure Key Vault ersetzen!
   
-  # Database Configuration (Azure Database for PostgreSQL)
+  # Datenbank-Verbindung zu Azure PostgreSQL
   DATABASE_URL: "postgresql://username:password@trustme-db.postgres.database.azure.com:5432/trustme?sslmode=require"
   
 
 ---
-# Backend Container App
+# Backend-Service: Go-API mit Hochverfügbarkeit
+# 2 Replicas für Load-Balancing und Zero-Downtime-Updates
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: trustme-backend
+  name: trustme-backend           # Backend-Deployment Identifier
 spec:
-  replicas: 2
+  replicas: 2                     # Horizontale Skalierung: 2 Instanzen für Ausfallsicherheit
   selector:
     matchLabels:
-      app: trustme-backend
+      app: trustme-backend        # Pod-Selektor für Service-Verknüpfung
   template:
     metadata:
       labels:
-        app: trustme-backend
+        app: trustme-backend      # Pod-Labels für Identifikation
     spec:
       containers:
-      - name: backend
-        image: trustme/backend:latest
+      - name: backend             # Container-Name innerhalb des Pods
+        image: trustme/backend:latest  # Docker-Image aus Container-Registry
         ports:
-        - containerPort: 3030
+        - containerPort: 8080     # Port für eingehende Verbindungen (konsistent mit lokaler Entwicklung)
         env:
+        # Umgebungsvariablen aus ConfigMap und Secrets
         - name: PORT
           valueFrom:
             configMapKeyRef:
               name: trustme-config
-              key: PORT
+              key: PORT             # Port aus ConfigMap lesen
         - name: DATABASE_URL
           valueFrom:
-            secretKeyRef:
+            secretKeyRef:           # Sensitive Daten aus Kubernetes Secret
               name: trustme-secrets
-              key: database-url
+              key: database-url     # Verschlüsselte DB-Verbindung
         - name: JWT_SECRET_KEY
           valueFrom:
-            secretKeyRef:
+            secretKeyRef:           # JWT-Secret für Token-Signierung
               name: trustme-secrets
               key: jwt-secret
         resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
+          requests:               # Minimum-Ressourcen für Container-Start
+            memory: "256Mi"       # 256 MB RAM für Go-Runtime
+            cpu: "250m"           # 0.25 CPU-Kerne
+          limits:                 # Maximum-Ressourcen für Resource-Protection
+            memory: "512Mi"       # 512 MB RAM-Obergrenze
+            cpu: "500m"           # 0.5 CPU-Kerne Maximum
+        # Gesundheitsprüfungen für automatisches Failover
+        livenessProbe:            # Prüft ob Container noch reagiert
+          httpGet:
+            path: /health         # Health-Check-Endpunkt in der API
+            port: 8080            # Korrigierter Port für Health-Checks
+          initialDelaySeconds: 30 # Wartezeit nach Container-Start
+          periodSeconds: 10       # Prüfintervall
+        readinessProbe:           # Prüft ob Container bereit für Traffic
           httpGet:
             path: /health
-            port: 3030
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3030
-          initialDelaySeconds: 5
+            port: 8080            # Korrigierter Port für Readiness-Checks
+          initialDelaySeconds: 5  # Schnellere Readiness-Prüfung
           periodSeconds: 5
 
 ---
-# Frontend Container App
+# Frontend-Service: React-SPA mit Nginx
+# Statische Assets mit optimierter Delivery
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: trustme-frontend
+  name: trustme-frontend          # Frontend-Deployment Identifier
 spec:
-  replicas: 2
+  replicas: 2                     # 2 Instanzen für Lastverteilung
   selector:
     matchLabels:
-      app: trustme-frontend
+      app: trustme-frontend       # Pod-Selektor
   template:
     metadata:
       labels:
-        app: trustme-frontend
+        app: trustme-frontend     # Pod-Labels
     spec:
       containers:
-      - name: frontend
-        image: trustme/frontend:latest
+      - name: frontend            # Nginx-Container für React-SPA
+        image: trustme/frontend:latest  # Frontend-Image mit Nginx
         ports:
-        - containerPort: 80
+        - containerPort: 80       # Standard HTTP-Port
         env:
+        # Frontend-Konfiguration zur Build-Zeit
         - name: VITE_BACKEND_URL
           valueFrom:
             configMapKeyRef:
               name: trustme-config
-              key: VITE_BACKEND_URL
+              key: VITE_BACKEND_URL # Backend-URL für API-Calls
         resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
+          requests:               # Leichtgewichtige Frontend-Anforderungen
+            memory: "128Mi"       # 128 MB für Nginx + statische Files
+            cpu: "100m"           # 0.1 CPU-Kern
           limits:
-            memory: "256Mi"
-            cpu: "200m"
-        livenessProbe:
+            memory: "256Mi"       # 256 MB Maximum
+            cpu: "200m"           # 0.2 CPU-Kern Maximum
+        # Health-Checks für Frontend-Verfügbarkeit
+        livenessProbe:            # Nginx-Lebenszeichen
           httpGet:
-            path: /
+            path: /               # Root-Pfad der React-App
             port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
-        readinessProbe:
+        readinessProbe:           # Bereitschaft für User-Traffic
           httpGet:
             path: /
             port: 80

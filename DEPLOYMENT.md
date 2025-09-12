@@ -104,7 +104,7 @@ docker-compose up -d db backend frontend
 
 ```bash
 # Backend Health Check
-curl http://localhost:3030/health
+curl http://localhost:8080/health
 
 # Frontend öffnen
 open http://localhost:3000
@@ -237,7 +237,7 @@ Die GitHub Actions Pipeline ist bereits konfiguriert:
 | `DATABASE_URL` | Docker Compose | Azure PostgreSQL | Datenbank-Verbindung |
 | `JWT_SECRET_KEY` | Einfach | Stark (32+ Zeichen) | JWT Token Signierung |
 | `ALLOWED_ORIGINS` | localhost | Deine Domain | CORS Konfiguration |
-| `VITE_BACKEND_URL` | localhost:3030 | Azure Container App | Frontend → Backend |
+| `VITE_BACKEND_URL` | localhost:8080 | Azure Container App | Frontend → Backend |
 
 ### Custom Domain (Optional)
 

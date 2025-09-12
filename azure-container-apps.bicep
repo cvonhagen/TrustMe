@@ -185,7 +185,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
           env: [
             {
               name: 'PORT'
-              value: '3030'
+              value: '8080'
             }
             {
               name: 'DATABASE_URL'
@@ -205,7 +205,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               type: 'Liveness'
               httpGet: {
                 path: '/health'
-                port: 3030
+                port: 8080
               }
               initialDelaySeconds: 30
               periodSeconds: 10
@@ -214,7 +214,7 @@ resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
               type: 'Readiness'
               httpGet: {
                 path: '/health'
-                port: 3030
+                port: 8080
               }
               initialDelaySeconds: 5
               periodSeconds: 5

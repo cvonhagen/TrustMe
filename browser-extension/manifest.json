@@ -1,50 +1,64 @@
 {
-  "manifest_version": 3,
-  "name": "TrustMe Password Manager",
-  "version": "1.0.0",
-  "description": "Sicherer Passwort-Manager mit End-to-End Verschlüsselung",
+  "manifest_version": 3,                                           // Manifest V3 - neueste Browser-Extension-Version
+  "name": "TrustMe Password Manager",                             // Extension-Name im Browser
+  "version": "1.0.0",                                             // Versions-Nummer für Updates
+  "description": "Sicherer Passwort-Manager mit End-to-End Verschlüsselung", // Beschreibung im Extension-Store
+  
+  // Berechtigungen, die die Extension benötigt
   "permissions": [
-    "storage",
-    "tabs",
-    "activeTab",
-    "scripting"
+    "storage",    // Lokale Speicherung von verschlüsselten Daten
+    "tabs",       // Zugriff auf Tab-Informationen für URL-Erkennung
+    "activeTab",  // Interaktion mit der aktuell aktiven Webseite
+    "scripting"   // Code-Injektion für Autofill-Funktionalität
   ],
+  
+  // URLs, auf die die Extension zugreifen darf
   "host_permissions": [
-    "http://localhost:8080/*",
-    "http://localhost:5173/*",
-    "<all_urls>"
+    "http://localhost:8080/*",  // Backend-API (lokale Entwicklung)
+    "http://localhost:5173/*",  // Frontend-App (lokale Entwicklung)
+    "<all_urls>"                // Alle Websites für Passwort-Autofill
   ],
+  // Background Service Worker - läuft kontinuierlich im Hintergrund
   "background": {
-    "service_worker": "src/background-scripts/background.js",
-    "type": "module"
+    "service_worker": "src/background-scripts/background.js",  // Haupt-Background-Skript
+    "type": "module"                                          // ES6-Module-Unterstützung
   },
+  
+  // Browser-Action (Icon in der Toolbar)
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "public/icon16.png",
-      "48": "public/icon48.png",
-      "128": "public/icon128.png"
+    "default_popup": "popup.html",                             // Popup beim Klick auf Extension-Icon
+    "default_icon": {                                          // Icons für verschiedene Auflösungen
+      "16": "public/icon16.png",                              // Kleine Icon-Variante
+      "48": "public/icon48.png",                              // Mittlere Icon-Variante  
+      "128": "public/icon128.png"                             // Große Icon-Variante
     }
   },
+  
+  // Extension-Icons für Extension-Management-Seite
   "icons": {
-    "16": "public/icon16.png",
-    "48": "public/icon48.png",
-    "128": "public/icon128.png"
+    "16": "public/icon16.png",   // Icon für Extension-Liste
+    "48": "public/icon48.png",   // Icon für Extension-Details
+    "128": "public/icon128.png"  // Icon für Chrome Web Store
   },
+  // Content Scripts - werden in Webseiten injiziert
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content-scripts/content.js"],
-      "run_at": "document_idle"
+      "matches": ["<all_urls>"],                              // Auf allen Websites aktiv
+      "js": ["src/content-scripts/content.js"],             // Haupt-Content-Script für Login-Erkennung
+      "run_at": "document_idle"                              // Ausführung nach vollständigem Laden der Seite
     }
   ],
+  
+  // Web-zugbängliche Ressourcen für Content Scripts
   "web_accessible_resources": [
     {
-      "resources": ["src/welcome.html", "public/*"],
-      "matches": ["<all_urls>"]
+      "resources": ["src/welcome.html", "public/*"],        // Dateien, die von Webseiten geladen werden können
+      "matches": ["<all_urls>"]                              // Zugriff von allen Websites erlaubt
     }
   ],
+  
+  // Content Security Policy für Extension-Sicherheit
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'"  // Nur eigene Skripte erlaubt, keine externen
   }
 } 

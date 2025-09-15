@@ -109,10 +109,10 @@ generate_secrets() {
 deploy_apps() {
     log "Deploye Container Apps..."
     
-    # Bicep Deployment
+    # ARM Template Deployment
     az deployment group create \
         --resource-group "$RESOURCE_GROUP" \
-        --template-file azure-simple-deploy.bicep \
+        --template-file azure-portal-deployment.json \
         --parameters \
             appName="$APP_NAME" \
             environment="$ENVIRONMENT" \

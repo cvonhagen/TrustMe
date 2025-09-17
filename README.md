@@ -253,11 +253,8 @@ docker-compose logs -f backend
 ## 🗺️ Wat noch kommt (Zukünftige Erweiterungen)
 
 - Dat mit die Passwoata auf'm Bildschirm noch schöna machen.
-- Noch mehr Möglichkeiten für 2FA.
 - Funktion, die Passwoata für dich macht.
 - Passwoata sicha mit andere teilen.
-- Dat als Programm auf'm Rechna (nich nur im Browser).
-- Dat in so Kisten packen (Docker-Container).
 - Auf AWS (odde annere Wolken) hochladen und laufen lassen.
 - Dat von alleine bauen, testen und hochladen lassen (CI/CD).
 

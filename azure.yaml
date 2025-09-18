@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: trustme
+metadata:
+  template: trustme-password-manager@0.0.1-beta
+  
+services:
+  backend:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: backend/Dockerfile
+      context: backend
+    env:
+      PORT: "8080"
+      ENVIRONMENT: "production"
+      
+  frontend:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: frontend/Dockerfile
+      context: frontend
+    env:
+      VITE_BACKEND_URL: "${BACKEND_URI}/api/v1"

@@ -1,22 +1,16 @@
-// Azure Container Apps Bicep Template für TrustMe Password Manager
-// Erstellt komplette Infrastruktur für Production Deployment
-
-@description('Name der Anwendung')
+@description('Name der Applikation')
 param appName string = 'trustme'
 
-@description('Azure Region für Deployment')
+@description('Azure Region')
 param location string = resourceGroup().location
 
 @description('Environment (dev, staging, prod)')
 param environment string = 'prod'
 
 @description('Container Registry Name')
-param containerRegistryName string = '${appName}registry${uniqueString(resourceGroup().id)}'
+param containerRegistryName string
 
-@description('Database Administrator Username')
-param dbAdminUsername string = 'trustmeadmin'
-
-@description('Database Administrator Password')
+@description('Database Admin Password')
 @secure()
 param dbAdminPassword string
 
@@ -25,56 +19,56 @@ param dbAdminPassword string
 param jwtSecretKey string
 
 // Variables
-var resourcePrefix = '${appName}-${environment}'
-var containerAppEnvName = '${resourcePrefix}-env'
-var backendAppName = '${resourcePrefix}-backend'
-var frontendAppName = '${resourcePrefix}-frontend'
-var dbServerName = '${resourcePrefix}-db'
-var dbName = 'trustme'
-var keyVaultName = '${resourcePrefix}-kv-${uniqueString(resourceGroup().id)}'
+var resourceNamePrefix = '${appName}-${environment}'
+var containerRegistryLoginServer = '${containerRegistryName}.azurecr.io'
 
-// Container Registry
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
-  name: containerRegistryName
+// Container Apps Environment
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
+  name: '${resourceNamePrefix}-env'
   location: location
-  sku: {
-    name: 'Basic'
-  }
   properties: {
-    adminUserEnabled: true
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalyticsWorkspace.properties.customerId
+        sharedKey: logAnalyticsWorkspace.listKeys().primarySharedKey
+      }
+    }
   }
 }
 
-// Key Vault für Secrets
-resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' = {
-  name: keyVaultName
+// Log Analytics Workspace
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: '${resourceNamePrefix}-logs'
   location: location
   properties: {
     sku: {
-      family: 'A'
-      name: 'standard'
+      name: 'PerGB2018'
     }
-    tenantId: subscription().tenantId
-    accessPolicies: []
-    enableRbacAuthorization: true
+    retentionInDays: 30
+    features: {
+      searchVersion: 1
+      legacy: 0
+      enableLogAccessUsingOnlyResourcePermissions: true
+    }
   }
 }
 
-// PostgreSQL Flexible Server
-resource dbServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
-  name: dbServerName
+// Azure Database for PostgreSQL
+resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
+  name: '${resourceNamePrefix}-db'
   location: location
   sku: {
     name: 'Standard_B1ms'
     tier: 'Burstable'
   }
   properties: {
-    administratorLogin: dbAdminUsername
+    administratorLogin: 'trustmeadmin'
     administratorLoginPassword: dbAdminPassword
-    version: '15'
     storage: {
       storageSizeGB: 32
     }
+    version: '15'
     backup: {
       backupRetentionDays: 7
       geoRedundantBackup: 'Disabled'
@@ -82,22 +76,25 @@ resource dbServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview'
     highAvailability: {
       mode: 'Disabled'
     }
+    maintenanceWindow: {
+      customWindow: 'Disabled'
+    }
   }
 }
 
 // Database
-resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-03-01-preview' = {
-  parent: dbServer
-  name: dbName
+resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-06-01-preview' = {
+  parent: postgresServer
+  name: 'trustme'
   properties: {
-    charset: 'UTF8'
-    collation: 'en_US.UTF8'
+    charset: 'utf8'
+    collation: 'en_US.utf8'
   }
 }
 
-// Firewall Rule für Azure Services
-resource dbFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-03-01-preview' = {
-  parent: dbServer
+// Firewall rule for Azure services
+resource postgresFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-06-01-preview' = {
+  parent: postgresServer
   name: 'AllowAzureServices'
   properties: {
     startIpAddress: '0.0.0.0'
@@ -105,231 +102,150 @@ resource dbFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules
   }
 }
 
-// Log Analytics Workspace
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: '${resourcePrefix}-logs'
-  location: location
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: 30
-  }
-}
-
-// Container Apps Environment
-resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
-  name: containerAppEnvName
-  location: location
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
-      }
-    }
-  }
-}
-
 // Backend Container App
-resource backendApp 'Microsoft.App/containerApps@2023-05-01' = {
-  name: backendAppName
+resource backendContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
+  name: '${resourceNamePrefix}-backend'
   location: location
   properties: {
-    managedEnvironmentId: containerAppEnv.id
+    managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 3030
-        allowInsecure: false
-        traffic: [
-          {
-            weight: 100
-            latestRevision: true
-          }
-        ]
+        targetPort: 8080
+        corsPolicy: {
+          allowedOrigins: ['*']
+          allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+          allowedHeaders: ['*']
+        }
       }
       registries: [
         {
-          server: containerRegistry.properties.loginServer
-          username: containerRegistry.name
+          server: containerRegistryLoginServer
+          username: containerRegistryName
           passwordSecretRef: 'registry-password'
         }
       ]
       secrets: [
         {
           name: 'registry-password'
-          value: containerRegistry.listCredentials().passwords[0].value
-        }
-        {
-          name: 'database-url'
-          value: 'postgresql://${dbAdminUsername}:${dbAdminPassword}@${dbServer.properties.fullyQualifiedDomainName}:5432/${dbName}?sslmode=require'
+          value: listCredentials(resourceId('Microsoft.ContainerRegistry/registries', containerRegistryName), '2023-07-01').passwords[0].value
         }
         {
           name: 'jwt-secret'
           value: jwtSecretKey
+        }
+        {
+          name: 'db-password'
+          value: dbAdminPassword
         }
       ]
     }
     template: {
       containers: [
         {
+          image: '${containerRegistryLoginServer}/trustme/backend:latest'
           name: 'backend'
-          image: '${containerRegistry.properties.loginServer}/trustme/backend:latest'
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
           env: [
             {
               name: 'PORT'
               value: '8080'
             }
             {
-              name: 'DATABASE_URL'
-              secretRef: 'database-url'
+              name: 'DB_HOST'
+              value: postgresServer.properties.fullyQualifiedDomainName
             }
             {
-              name: 'JWT_SECRET_KEY'
+              name: 'DB_PORT'
+              value: '5432'
+            }
+            {
+              name: 'DB_NAME'
+              value: 'trustme'
+            }
+            {
+              name: 'DB_USER'
+              value: 'trustmeadmin'
+            }
+            {
+              name: 'DB_PASSWORD'
+              secretRef: 'db-password'
+            }
+            {
+              name: 'JWT_SECRET'
               secretRef: 'jwt-secret'
             }
             {
-              name: 'ALLOWED_ORIGINS'
-              value: 'https://${frontendAppName}.${containerAppEnv.properties.defaultDomain}'
+              name: 'ENVIRONMENT'
+              value: environment
             }
           ]
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 30
-              periodSeconds: 10
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 5
-            }
-          ]
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
         }
       ]
       scale: {
         minReplicas: 1
-        maxReplicas: 5
-        rules: [
-          {
-            name: 'http-scaling'
-            http: {
-              metadata: {
-                concurrentRequests: '100'
-              }
-            }
-          }
-        ]
+        maxReplicas: 3
       }
     }
   }
 }
 
 // Frontend Container App
-resource frontendApp 'Microsoft.App/containerApps@2023-05-01' = {
-  name: frontendAppName
+resource frontendContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
+  name: '${resourceNamePrefix}-frontend'
   location: location
   properties: {
-    managedEnvironmentId: containerAppEnv.id
+    managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
         targetPort: 80
-        allowInsecure: false
-        traffic: [
-          {
-            weight: 100
-            latestRevision: true
-          }
-        ]
       }
       registries: [
         {
-          server: containerRegistry.properties.loginServer
-          username: containerRegistry.name
+          server: containerRegistryLoginServer
+          username: containerRegistryName
           passwordSecretRef: 'registry-password'
         }
       ]
       secrets: [
         {
           name: 'registry-password'
-          value: containerRegistry.listCredentials().passwords[0].value
+          value: listCredentials(resourceId('Microsoft.ContainerRegistry/registries', containerRegistryName), '2023-07-01').passwords[0].value
         }
       ]
     }
     template: {
       containers: [
         {
+          image: '${containerRegistryLoginServer}/trustme/frontend:latest'
           name: 'frontend'
-          image: '${containerRegistry.properties.loginServer}/trustme/frontend:latest'
+          env: [
+            {
+              name: 'VITE_BACKEND_URL'
+              value: 'https://${backendContainerApp.properties.configuration.ingress.fqdn}/api/v1'
+            }
+          ]
           resources: {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
-          env: [
-            {
-              name: 'VITE_BACKEND_URL'
-              value: 'https://${backendApp.properties.configuration.ingress.fqdn}/api/v1'
-            }
-          ]
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/'
-                port: 80
-              }
-              initialDelaySeconds: 30
-              periodSeconds: 10
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/'
-                port: 80
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 5
-            }
-          ]
         }
       ]
       scale: {
         minReplicas: 1
-        maxReplicas: 10
-        rules: [
-          {
-            name: 'http-scaling'
-            http: {
-              metadata: {
-                concurrentRequests: '50'
-              }
-            }
-          }
-        ]
+        maxReplicas: 2
       }
     }
   }
 }
 
 // Outputs
-output containerRegistryLoginServer string = containerRegistry.properties.loginServer
-output backendUrl string = 'https://${backendApp.properties.configuration.ingress.fqdn}'
-output frontendUrl string = 'https://${frontendApp.properties.configuration.ingress.fqdn}'
-output databaseConnectionString string = 'postgresql://${dbAdminUsername}:${dbAdminPassword}@${dbServer.properties.fullyQualifiedDomainName}:5432/${dbName}?sslmode=require'
+output frontendUrl string = 'https://${frontendContainerApp.properties.configuration.ingress.fqdn}'
+output backendUrl string = 'https://${backendContainerApp.properties.configuration.ingress.fqdn}'
+output databaseServer string = postgresServer.properties.fullyQualifiedDomainName

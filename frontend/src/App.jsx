@@ -12,6 +12,7 @@ import WelcomePage from './pages/WelcomePage';           // Startseite mit App-B
 import LoginPage from './pages/LoginPage';               // Benutzer-Anmeldung
 import RegisterPage from './pages/RegisterPage';         // Benutzer-Registrierung
 import VerifyEmailPage from './pages/VerifyEmailPage';   // E-Mail-Verifizierung nach Registrierung
+import RestoreAccountPage from './pages/RestoreAccountPage'; // Account-Wiederherstellung
 import ImpressumPage from './pages/ImpressumPage';       // Rechtliche Informationen
 import DatenschutzPage from './pages/DatenschutzPage';   // Datenschutzerklärung
 
@@ -40,6 +41,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />             {/* Anmelde-Formular */}
       <Route path="/register" element={<RegisterPage />} />       {/* Registrierungs-Formular */}
       <Route path="/verify-email" element={<VerifyEmailPage />} /> {/* E-Mail-Bestätigung */}
+      <Route path="/restore-account" element={<RestoreAccountPage />} /> {/* Account-Wiederherstellung */}
       <Route path="/impressum" element={<ImpressumPage />} />      {/* Rechtliche Angaben */}
       <Route path="/datenschutz" element={<DatenschutzPage />} />  {/* Datenschutz-Info */}
 

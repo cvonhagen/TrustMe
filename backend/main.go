@@ -67,11 +67,50 @@ func initDB() error {
 
 	DB = db
 
-	// Automatische Tabellen-Migration (User & Password Models)
-	// Erstellt Tabellen nur wenn sie nicht existieren, behält bestehende Daten
-	if err := DB.AutoMigrate(&models.User{}, &models.Password{}); err != nil {
-		log.Printf("Warnung: Migration fehlgeschlagen: %v", err)
+	// Manuelle Migration für bessere Kontrolle
+	log.Println("Starte Datenbank-Migration...")
+	
+	// Prepared Statement Cache deaktivieren für Migration
+	sqlDB, err = DB.DB()
+	if err == nil {
+		// Neue Verbindung ohne Cache für Migration
+		migrationDB, migErr := gorm.Open(postgres.Open(dsn), &gorm.Config{
+			PrepareStmt: false, // Prepared Statements deaktivieren
+			DisableForeignKeyConstraintWhenMigrating: true,
+		})
+		if migErr == nil {
+			// Migration mit separater Verbindung durchführen
+			if migErr := migrationDB.AutoMigrate(&models.User{}, &models.Password{}); migErr != nil {
+				log.Printf("AutoMigrate-Fehler: %v", migErr)
+			} else {
+				log.Println("AutoMigrate erfolgreich abgeschlossen")
+			}
+			
+			// Prüfe explizit die neuen Spalten
+			var columnExists bool
+			migrationDB.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'deleted_at')").Scan(&columnExists)
+			if columnExists {
+				log.Println("✓ Spalte 'deleted_at' existiert")
+			} else {
+				log.Println("✗ Spalte 'deleted_at' fehlt")
+			}
+			
+			migrationDB.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'deletion_scheduled_at')").Scan(&columnExists)
+			if columnExists {
+				log.Println("✓ Spalte 'deletion_scheduled_at' existiert")
+			} else {
+				log.Println("✗ Spalte 'deletion_scheduled_at' fehlt")
+			}
+			
+			// Migration-Verbindung schließen
+			migSqlDB, _ := migrationDB.DB()
+			if migSqlDB != nil {
+				migSqlDB.Close()
+			}
+		}
 	}
+	
+	log.Println("Migration abgeschlossen")
 
 	return nil
 }
@@ -183,6 +222,7 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)       // Token validieren (geschützt)
 	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)               // Benutzerabmeldung (geschützt)
 	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount)     // Account löschen (geschützt)
+	auth.Post("/restore-account", handlers.Auth.RestoreDeletedAccount)      // Account wiederherstellen (öffentlich)
 
 	// Passwortverwaltungsrouten (geschützt, erfordert Authentifizierung)
 	passwords := api.Group("/passwords", AuthRequired())

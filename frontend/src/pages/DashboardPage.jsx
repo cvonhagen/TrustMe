@@ -384,8 +384,12 @@ const DashboardPage = () => {
   const handleConfirmDeleteAccount = async () => {
     try {
       setDeleteAccountError(null);
-      await deleteAccount();
-      alert("Account erfolgreich gelöscht!");
+      const response = await deleteAccount();
+      
+      // Zeige die Antwort vom Server an (enthält 30-Tage-Information)
+      const message = response.data?.message || "Account wurde für Löschung markiert. Ihre Daten werden noch 30 Tage sicher gespeichert.";
+      alert(message);
+      
       logout();
       navigate("/login");
     } catch (err) {
@@ -906,15 +910,28 @@ const DashboardPage = () => {
         <Dialog
           open={openDeleteAccountDialog}
           onClose={handleCloseDeleteAccountDialog}
+          maxWidth="sm"
+          fullWidth
         >
-          <DialogTitle>Account löschen</DialogTitle>
+          <DialogTitle sx={{ color: 'error.main' }}>Account löschen?</DialogTitle>
           <DialogContent>
             <Typography variant="body1" gutterBottom>
-              Sind Sie sicher, dass Sie Ihren Account permanent löschen möchten?
+              Sind Sie sicher, dass Sie Ihren Account löschen möchten?
             </Typography>
-            <Typography variant="body2" color="error" gutterBottom>
-              Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre
-              gespeicherten Passwörter werden gelöscht.
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                <strong>Wichtiger Hinweis:</strong> Ihr Account wird für die Löschung markiert, aber Ihre Daten werden noch 
+                <strong> 30 Tage lang sicher gespeichert</strong>. Während dieser Zeit können Sie Ihren Account 
+                jederzeit wiederherstellen. Nach 30 Tagen werden alle Daten endgültig und unwiederruflich gelöscht.
+              </Typography>
+            </Alert>
+            <Typography variant="body2" sx={{ mt: 2, fontWeight: 'bold' }}>
+              Diese Aktion betrifft:
+            </Typography>
+            <Typography variant="body2" component="ul" sx={{ mt: 1 }}>
+              <li>Alle gespeicherten Passwörter</li>
+              <li>Ihr Benutzerprofil</li>
+              <li>Alle Notizen und Einstellungen</li>
             </Typography>
             {deleteAccountError && (
               <Alert severity="error" sx={{ mt: 2 }}>
@@ -929,7 +946,7 @@ const DashboardPage = () => {
               variant="contained"
               color="error"
             >
-              Account löschen
+              Für Löschung markieren
             </Button>
           </DialogActions>
         </Dialog>

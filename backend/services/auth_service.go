@@ -114,7 +114,13 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 	}, nil
 }
 
-// DeleteAccount löscht Benutzeraccount und alle verknüpften Daten
+// ScheduleAccountDeletion markiert einen Account für die Löschung (Soft Delete)
+// Der Account wird nach 30 Tagen automatisch gelöscht
+func (s *AuthService) ScheduleAccountDeletion(userID uint) error {
+	return s.UserService.ScheduleAccountDeletion(userID)
+}
+
+// DeleteAccount löscht Benutzeraccount und alle verknüpften Daten (veraltet - verwende ScheduleAccountDeletion)
 // Transaktionssichere Löschung: erst Passwörter, dann Benutzer
 // GDPR-konform: vollständige Entfernung aller Benutzerdaten
 func (s *AuthService) DeleteAccount(userID uint) error {

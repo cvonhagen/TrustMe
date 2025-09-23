@@ -289,7 +289,7 @@ const WelcomePage = () => {
           </Button>
 
           {/* Rechtliche Links */}
-          <Box sx={{ mt: 3, display: "flex", gap: 3, justifyContent: "center" }}>
+          <Box sx={{ mt: 3, display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
             <Link
               component={RouterLink}
               to="/impressum"
@@ -321,6 +321,23 @@ const WelcomePage = () => {
               }}
             >
               Datenschutz
+            </Link>
+            <Link
+              component={RouterLink}
+              to="/restore-account"
+              sx={{
+                color: "warning.main",
+                textDecoration: "none",
+                fontSize: "0.8rem",
+                fontWeight: "bold",
+                "&:hover": {
+                  textDecoration: "underline",
+                  color: "warning.dark",
+                },
+                transition: "color 0.3s ease",
+              }}
+            >
+              🔄 Account wiederherstellen
             </Link>
           </Box>
 

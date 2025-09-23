@@ -27,7 +27,7 @@ export const setAuthToken = (token) => {
 api.interceptors.request.use(
 	config => {
 		// Öffentliche Routen ohne Authentifizierung
-		const publicRoutes = ['/auth/login', '/auth/register', '/auth/verify-email', '/auth/resend-verification'];
+		const publicRoutes = ['/auth/login', '/auth/register', '/auth/verify-email', '/auth/resend-verification', '/auth/restore-account'];
 		const isPublicRoute = publicRoutes.some(route => config.url.endsWith(route));
 
     const token = authToken;
@@ -76,6 +76,14 @@ export const disable2FA = () => { return api.delete('/two-factor/disable'); };
 // API-Funktionen für Account-Verwaltung
 // deleteAccount: Löscht den Account des angemeldeten Benutzers permanent.
 export const deleteAccount = () => { return api.delete('/auth/account'); };
+
+// restoreAccount: Stellt einen gelöschten Account wieder her (mit Credentials)
+export const restoreAccount = (credentials) => { 
+  return api.post('/auth/restore-account', {
+    username: credentials.username,
+    master_password: credentials.password // API erwartet master_password
+  }); 
+};
 
 // validateToken: Prüft, ob der aktuelle Token noch gültig ist
 export const validateToken = () => { return api.get('/auth/validate'); };

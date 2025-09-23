@@ -275,6 +275,16 @@ const LoginPage = () => {
           {isLogin ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}
         </Link>
 
+        {/* Link zur Account-Wiederherstellung - immer sichtbar */}
+        <Link
+          component="button"
+          variant="body2"
+          onClick={() => navigate('/restore-account')}
+          sx={{ mt: 1, display: 'block', color: 'primary.main' }}
+        >
+          🔄 Account wiederherstellen (gelöschter Account)
+        </Link>
+
         {/* Link zurück zur Startseite */}
         <Link
           component="button"

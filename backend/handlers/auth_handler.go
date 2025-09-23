@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"backend/models"
 	"backend/schemas"
 	"backend/services"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthHandler handles authentication related requests.
@@ -99,17 +102,20 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 }
 
 // DeleteAccount handles user account deletion requests.
+// Uses soft delete - account is marked for deletion but kept for 30 days.
 func (h *AuthHandler) DeleteAccount(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(uint)
 
-	if err := h.AuthService.DeleteAccount(userID); err != nil {
+	if err := h.AuthService.ScheduleAccountDeletion(userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Account deleted successfully",
+		"message": "Account wurde für Löschung markiert. Ihre Daten werden noch 30 Tage sicher gespeichert und können bis dahin wiederhergestellt werden. Nach 30 Tagen werden alle Daten endgültig gelöscht.",
+		"deletion_date": "In 30 Tagen",
+		"can_restore": true,
 	})
 }
 
@@ -161,5 +167,60 @@ func (h *AuthHandler) ResendVerificationEmail(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Verifizierungs-E-Mail wurde erneut gesendet",
+	})
+}
+
+// RestoreDeletedAccount handles public account restoration with username/password.
+func (h *AuthHandler) RestoreDeletedAccount(c *fiber.Ctx) error {
+	// Parse request body
+	var req schemas.LoginRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	// Versuche den User zu finden (auch gelöschte)
+	var user models.User
+	result := h.AuthService.DB.Unscoped().Where("username = ?", req.Username).First(&user)
+	if result.Error != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Ungültige Anmeldedaten",
+		})
+	}
+
+	// Prüfe ob Account zur Löschung markiert ist
+	if user.DeletedAt == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Account ist nicht zur Löschung markiert",
+		})
+	}
+
+	// Prüfe Passwort mit bcrypt (wie bei der Registrierung)
+	err := bcrypt.CompareHashAndPassword([]byte(user.HashedMasterPassword), []byte(req.MasterPassword))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Ungültiges Passwort",
+		})
+	}
+
+	// Prüfe ob die 30 Tage noch nicht abgelaufen sind
+	if user.DeletionScheduledAt != nil && time.Now().After(*user.DeletionScheduledAt) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Wiederherstellungszeitraum ist abgelaufen",
+		})
+	}
+
+	// Stelle Account wieder her
+	user.DeletedAt = nil
+	user.DeletionScheduledAt = nil
+	if err := h.AuthService.DB.Save(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Fehler bei der Wiederherstellung",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Account wurde erfolgreich wiederhergestellt! Sie können sich jetzt wieder anmelden.",
 	})
 }

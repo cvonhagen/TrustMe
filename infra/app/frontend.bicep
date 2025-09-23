@@ -23,11 +23,25 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' e
   name: containerRegistryName
 }
 
+// Grant the managed identity access to pull images from Container Registry
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, userIdentity.id, 'acrpull')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull role
+    principalId: userIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Frontend Container App
 resource app 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   tags: tags
+  dependsOn: [
+    acrPullRole
+  ]
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -52,12 +66,24 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
     template: {
       containers: [
         {
-          image: exists ? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' : '${containerRegistry.properties.loginServer}/trustme/frontend:latest'
-          name: 'frontend'
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          name: 'trustme-frontend'
           env: [
             {
               name: 'VITE_BACKEND_URL'
               value: '${backendUrl}/api/v1'
+            }
+            {
+              name: 'VITE_APP_NAME'
+              value: 'TrustMe Password Manager'
+            }
+            {
+              name: 'VITE_APP_VERSION'
+              value: '1.0.0'
+            }
+            {
+              name: 'VITE_ENVIRONMENT'
+              value: 'production'
             }
           ]
           resources: {

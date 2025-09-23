@@ -16,6 +16,9 @@ type User struct {
 	Salt                 string     `gorm:"type:text;not null"`   // Salt für das Hashing des Master-Passworts
 	TwoFAEnabled         bool       `gorm:"default:false"`        // Flag, ob die Zwei-Faktor-Authentifizierung aktiviert ist
 	TwoFASecret          string     `gorm:"type:text"`            // Geheimnis für die Zwei-Faktor-Authentifizierung (nullable)
+	// Soft Delete Felder
+	DeletedAt            *time.Time `gorm:"index"` // Zeitstempel der Löschung (NULL = nicht gelöscht)
+	DeletionScheduledAt  *time.Time // Zeitstempel wann der Account endgültig gelöscht wird
 	CreatedAt            time.Time  // Zeitstempel der Erstellung des Benutzers
 	UpdatedAt            time.Time  // Zeitstempel der letzten Aktualisierung des Benutzers
 	Passwords            []Password `gorm:"foreignKey:UserID"` // Verknüpfung zu den Passwörtern des Benutzers (One-to-Many)

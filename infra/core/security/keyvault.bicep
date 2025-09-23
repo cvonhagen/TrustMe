@@ -36,15 +36,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   }
 }
 
-// Generate database password
-resource databasePasswordSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  parent: keyVault
-  name: 'database-password'
-  properties: {
-    value: uniqueString(resourceGroup().id, name, 'database')
-  }
-}
-
 // Generate JWT secret
 resource jwtSecretSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   parent: keyVault

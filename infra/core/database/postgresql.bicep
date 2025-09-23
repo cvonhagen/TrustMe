@@ -4,15 +4,8 @@ param tags object = {}
 param databaseName string
 param keyVaultName string
 
-// Get database password from Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
-  name: keyVaultName
-}
-
-resource databasePasswordSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' existing = {
-  parent: keyVault
-  name: 'database-password'
-}
+// Generate a strong password using uniqueString
+var administratorPassword = '${uniqueString(resourceGroup().id, name)}Aa1!'
 
 // PostgreSQL Flexible Server
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
@@ -25,7 +18,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-pr
   }
   properties: {
     administratorLogin: 'trustmeadmin'
-    administratorLoginPassword: databasePasswordSecret.properties.value
+    administratorLoginPassword: administratorPassword
     storage: {
       storageSizeGB: 32
     }
@@ -60,6 +53,19 @@ resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
+  }
+}
+
+// Store the password in Key Vault for reference
+resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+  name: keyVaultName
+}
+
+resource databasePasswordSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  parent: keyVault
+  name: 'database-password'
+  properties: {
+    value: administratorPassword
   }
 }
 

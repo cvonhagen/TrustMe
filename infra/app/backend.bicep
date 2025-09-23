@@ -26,8 +26,36 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' e
   name: containerRegistryName
 }
 
+// Grant the managed identity access to pull images from Container Registry
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, userIdentity.id, 'acrpull')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull role
+    principalId: userIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
+}
+
+// Grant the managed identity access to Key Vault secrets
+resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
+  parent: keyVault
+  name: 'add'
+  properties: {
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: userIdentity.properties.principalId
+        permissions: {
+          secrets: ['get']
+        }
+      }
+    ]
+  }
 }
 
 // Backend Container App
@@ -35,6 +63,10 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   tags: tags
+  dependsOn: [
+    keyVaultAccessPolicy
+    acrPullRole
+  ]
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -76,8 +108,8 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
     template: {
       containers: [
         {
-          image: exists ? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' : '${containerRegistry.properties.loginServer}/trustme/backend:latest'
-          name: 'backend'
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          name: 'trustme-backend'
           env: [
             {
               name: 'PORT'
@@ -110,6 +142,18 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
             {
               name: 'ENVIRONMENT'
               value: 'production'
+            }
+            {
+              name: 'APP_NAME'
+              value: 'TrustMe Password Manager Backend'
+            }
+            {
+              name: 'APP_VERSION'
+              value: '1.0.0'
+            }
+            {
+              name: 'FRONTEND_URL'
+              value: 'https://ca-frontend-*'
             }
           ]
           resources: {

@@ -206,9 +206,10 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 
 	// Benutzerverwaltungsrouten (geschützt)
 	users := api.Group("/users", AuthRequired())
-	users.Get("/profile", handlers.User.GetProfile)       // Benutzerprofil abrufen
-	users.Put("/profile", handlers.User.UpdateProfile)    // Benutzerprofil aktualisieren
-	users.Delete("/account", handlers.User.DeleteAccount) // Benutzerkonto löschen
+	users.Get("/profile", handlers.User.GetProfile)          // Benutzerprofil abrufen
+	users.Put("/profile", handlers.User.UpdateProfile)       // Benutzerprofil aktualisieren
+	users.Delete("/account", handlers.User.DeleteAccount)    // Benutzerkonto für Löschung markieren (30 Tage)
+	users.Post("/account/restore", handlers.User.RestoreAccount) // Benutzerkonto wiederherstellen
 
 	// TEST-ONLY: Entwicklungs-Routen für Testdaten-Generierung
 	// Diese Route ist NUR in der Entwicklungsumgebung aktiviert
@@ -251,6 +252,15 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 				"username": username,
 			})
 		})
+		
+		// Manueller Account-Cleanup (nur für Development)
+		test.Post("/cleanup-accounts", func(c *fiber.Ctx) error {
+			cleanupService := services.NewCleanupService(DB, services.NewUserService(DB))
+			cleanupService.RunAccountCleanup()
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"message": "Account-Cleanup manuell ausgeführt",
+			})
+		})
 	}
 
 }
@@ -270,6 +280,10 @@ func initServices() *Handlers {
 	emailService := services.NewEmailService(DB)              // E-Mail-Dienst erstellen
 	passwordService := services.NewPasswordService(DB)        // Passwortdienst erstellen
 	twoFAService := services.NewTwoFAService(DB, userService) // 2FA-Dienst erstellen
+	cleanupService := services.NewCleanupService(DB, userService) // Cleanup-Dienst erstellen
+
+	// Starte den automatischen Account-Cleanup-Scheduler
+	cleanupService.StartCleanupScheduler()
 
 	// Handler mit den entsprechenden Diensten initialisieren und zurückgeben
 	return &Handlers{

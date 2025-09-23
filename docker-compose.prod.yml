@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend:
+    image: christechstarter/trustme-backend:latest
+    container_name: trustme-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - GO_ENV=production
+      - FRONTEND_URL=http://localhost:5173
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - DB_CONNECTION_STRING=${DB_CONNECTION_STRING:-file:./trustme.db}
+      - SMTP_HOST=${SMTP_HOST:-localhost}
+      - SMTP_PORT=${SMTP_PORT:-1025}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@trustme.local}
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - trustme-network
+    restart: unless-stopped
+
+  frontend:
+    image: christechstarter/trustme-frontend:latest
+    container_name: trustme-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - trustme-network
+    restart: unless-stopped
+
+  browser-extension:
+    image: christechstarter/trustme-browser-extension:latest
+    container_name: trustme-extension
+    volumes:
+      - extension-dist:/app/dist
+    networks:
+      - trustme-network
+    restart: unless-stopped
+
+  # Optional: MailHog für E-Mail-Testing (nur für Development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: trustme-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - trustme-network
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+    driver: local
+  extension-dist:
+    driver: local
+
+networks:
+  trustme-network:
+    driver: bridge

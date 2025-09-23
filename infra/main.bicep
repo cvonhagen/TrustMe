@@ -15,6 +15,9 @@ param principalId string = ''
 // Tags that should be applied to all resources.
 var tags = {
   'azd-env-name': environmentName
+  'project': 'TrustMe Password Manager'
+  'version': '1.0.0'
+  'created-by': 'azd'
 }
 
 var abbrs = loadJsonContent('./abbreviations.json')
@@ -67,6 +70,17 @@ module frontend 'app/frontend.bicep' = {
   }
 }
 
+module mailhog 'app/mailhog.bicep' = {
+  name: 'mailhog'
+  params: {
+    name: '${abbrs.appContainerApps}mailhog-${resourceToken}'
+    location: location
+    tags: tags
+    containerAppsEnvironmentName: containerApps.outputs.environmentName
+    exists: false
+  }
+}
+
 module database 'core/database/postgresql.bicep' = {
   name: 'database'
   params: {
@@ -91,14 +105,38 @@ module keyVault 'core/security/keyvault.bicep' = {
   }
 }
 
+module frontDoor 'core/security/frontdoor.bicep' = {
+  name: 'frontdoor'
+  params: {
+    name: '${abbrs.cdnProfiles}${resourceToken}'
+    location: 'Global'
+    tags: tags
+    frontendOriginUrl: frontend.outputs.uri
+    backendOriginUrl: backend.outputs.uri
+    mailhogOriginUrl: mailhog.outputs.uri
+    customDomainName: 'trustme-${resourceToken}'
+  }
+  dependsOn: [
+    frontend
+    backend
+    mailhog
+  ]
+}
+
 // Database outputs
 output AZURE_DATABASE_HOST string = database.outputs.host
 output AZURE_DATABASE_NAME string = database.outputs.databaseName
 output AZURE_DATABASE_USERNAME string = database.outputs.username
 
-// Container Apps outputs
+// Container Apps outputs (direkte URLs)
 output BACKEND_URI string = backend.outputs.uri
 output FRONTEND_URI string = frontend.outputs.uri
+output MAILHOG_URI string = mailhog.outputs.uri
+
+// Front Door outputs (schöne URLs mit WAF)
+output TRUSTME_APP_URL string = frontDoor.outputs.frontendUrl
+output TRUSTME_API_URL string = frontDoor.outputs.backendUrl
+output TRUSTME_MAIL_URL string = frontDoor.outputs.mailhogUrl
 
 // Key Vault output
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name

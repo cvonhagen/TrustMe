@@ -1,32 +1,34 @@
-# TrustMe Password Manager - Azure URLs
+# TrustMe Password Manager - Schöne Azure URLs
 
 ## 🚀 Produktive URLs (Front Door + WAF)
 
-Nach dem erfolgreichen Azure-Deployment findest du diese schönen URLs:
+Nach dem erfolgreichen Azure-Deployment findest du diese schönen, lesbaren URLs:
 
 ### Frontend (Web-App)
 ```
-https://trustme-{uniquestring}-app-{hash}.azurefd.net
+https://trustme-{6-zeichen}-app-{hash}.azurefd.net
 ```
 - **Zweck**: Hauptanwendung für Benutzer
 - **Features**: React-Frontend mit Vite
 - **Sicherheit**: WAF-geschützt, HTTPS-erzwungen
+- **Name**: `trustme-frontend-{6-zeichen}`
 
 ### Backend (API)
 ```
-https://trustme-{uniquestring}-api-{hash}.azurefd.net
+https://trustme-{6-zeichen}-api-{hash}.azurefd.net
 ```
 - **Zweck**: REST API für Frontend und Browser Extension
 - **Features**: Go Fiber Backend mit PostgreSQL
 - **Sicherheit**: WAF-geschützt, Rate-Limiting
+- **Name**: `trustme-backend-{6-zeichen}`
 
 ### E-Mail Testing (MailHog)
 ```
-https://trustme-{uniquestring}-mail-{hash}.azurefd.net
+https://trustme-{6-zeichen}-mail-{hash}.azurefd.net
 ```
 - **Zweck**: E-Mail-Testing während der Entwicklung
 - **Features**: Web-basierter E-Mail-Client
-- **Zugriff**: Nur für Development/Testing
+- **Name**: `trustme-mailhog-{6-zeichen}`
 
 ## 🔧 Direkte Container URLs (ohne Front Door)
 
@@ -34,17 +36,17 @@ Falls du die direkten Container-URLs brauchst:
 
 ### Frontend
 ```
-https://ca-frontend-{uniquestring}.{hash}.westeurope.azurecontainerapps.io
+https://trustme-frontend-{6-zeichen}.{hash}.westeurope.azurecontainerapps.io
 ```
 
 ### Backend  
 ```
-https://ca-backend-{uniquestring}.{hash}.westeurope.azurecontainerapps.io
+https://trustme-backend-{6-zeichen}.{hash}.westeurope.azurecontainerapps.io
 ```
 
 ### MailHog
 ```
-https://ca-mailhog-{uniquestring}.{hash}.westeurope.azurecontainerapps.io
+https://trustme-mailhog-{6-zeichen}.{hash}.westeurope.azurecontainerapps.io
 ```
 
 ## 📍 Wo findest du die URLs?
@@ -60,8 +62,10 @@ azd up
 
 ### 2. Azure Portal
 - **Resource Group**: `rg-on-24-09-christoph`
-- **Front Door Profile**: `fd-{uniquestring}`
-- **Endpoints**: Unter "Front Door Endpoints"
+- **Front Door Profile**: `trustme-fd-{6-zeichen}`
+- **Container Apps**: `trustme-frontend-{6-zeichen}`, `trustme-backend-{6-zeichen}`, etc.
+- **Key Vault**: `trustme-vault-{6-zeichen}`
+- **Database**: `trustme-db-{6-zeichen}`
 
 ### 3. CLI Befehl
 ```bash
@@ -90,15 +94,23 @@ azd show
 - **Health Probes**: Automatisches Failover bei Problemen
 - **Caching**: Statische Inhalte werden gecacht
 
-## 📝 URL-Naming Schema
+### 🏷️ Neue Naming-Struktur
 
+**Azure Resources:**
+- Container Apps: `trustme-frontend-abc123`, `trustme-backend-abc123`
+- Database: `trustme-db-abc123`  
+- Key Vault: `trustme-vault-abc123`
+- Front Door: `trustme-fd-abc123`
+- Container Registry: `trustmeregistryabc123`
+
+**Front Door URLs:**
 ```
-https://trustme-{uniquestring}-{service}-{hash}.azurefd.net
+https://trustme-abc123-{service}-{hash}.azurefd.net
 ```
 
 - **trustme**: Projekt-Identifikator
-- **{uniquestring}**: Eindeutiger String basierend auf Resource Group
+- **abc123**: Kurzer 6-Zeichen eindeutiger String (statt langer Hash)
 - **{service}**: app (Frontend), api (Backend), mail (MailHog)
-- **{hash}**: Azure-generierter Hash für eindeutigkeit
+- **{hash}**: Azure-generierter Hash für Eindeutigkeit
 
-Beispiel: `https://trustme-muwnkh33j26ko-app-abc123.azurefd.net`
+Beispiel: `https://trustme-abc123-app-def456.azurefd.net`

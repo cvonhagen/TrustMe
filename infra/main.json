@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "1514101745254360645"
+      "templateHash": "13544614331371664107"
     }
   },
   "parameters": {
@@ -166,7 +166,8 @@
       "created-by": "azd"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location')))]"
+    "resourceToken": "[toLower(uniqueString(resourceGroup().id, parameters('environmentName'), parameters('location')))]",
+    "shortToken": "[substring(variables('resourceToken'), 0, 6)]"
   },
   "resources": [
     {
@@ -189,13 +190,13 @@
             "value": "[variables('tags')]"
           },
           "containerAppsEnvironmentName": {
-            "value": "[format('{0}{1}', variables('abbrs').appManagedEnvironments, variables('resourceToken'))]"
+            "value": "[format('trustme-env-{0}', variables('shortToken'))]"
           },
           "containerRegistryName": {
-            "value": "[format('{0}{1}', variables('abbrs').containerRegistryRegistries, variables('resourceToken'))]"
+            "value": "[format('trustmeregistry{0}', variables('shortToken'))]"
           },
           "logAnalyticsWorkspaceName": {
-            "value": "[format('{0}{1}', variables('abbrs').operationalInsightsWorkspaces, variables('resourceToken'))]"
+            "value": "[format('trustme-logs-{0}', variables('shortToken'))]"
           }
         },
         "template": {
@@ -310,7 +311,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}backend-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))]"
+            "value": "[format('trustme-backend-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -319,7 +320,7 @@
             "value": "[variables('tags')]"
           },
           "identityName": {
-            "value": "[format('{0}backend-{1}', variables('abbrs').managedIdentityUserAssignedIdentities, variables('resourceToken'))]"
+            "value": "[format('trustme-backend-identity-{0}', variables('shortToken'))]"
           },
           "containerAppsEnvironmentName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.environmentName.value]"
@@ -590,7 +591,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}frontend-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))]"
+            "value": "[format('trustme-frontend-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -599,7 +600,7 @@
             "value": "[variables('tags')]"
           },
           "identityName": {
-            "value": "[format('{0}frontend-{1}', variables('abbrs').managedIdentityUserAssignedIdentities, variables('resourceToken'))]"
+            "value": "[format('trustme-frontend-identity-{0}', variables('shortToken'))]"
           },
           "containerAppsEnvironmentName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.environmentName.value]"
@@ -774,7 +775,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}mailhog-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))]"
+            "value": "[format('trustme-mailhog-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -879,7 +880,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}{1}', variables('abbrs').dBforPostgreSQLServers, variables('resourceToken'))]"
+            "value": "[format('trustme-db-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -1020,7 +1021,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}{1}', variables('abbrs').keyVaultVaults, variables('resourceToken'))]"
+            "value": "[format('trustme-vault-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -1117,7 +1118,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "[format('{0}{1}', variables('abbrs').cdnProfiles, variables('resourceToken'))]"
+            "value": "[format('trustme-fd-{0}', variables('shortToken'))]"
           },
           "location": {
             "value": "Global"
@@ -1135,7 +1136,7 @@
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'mailhog'), '2022-09-01').outputs.uri.value]"
           },
           "customDomainName": {
-            "value": "[format('trustme-{0}', variables('resourceToken'))]"
+            "value": "[format('trustme-{0}', variables('shortToken'))]"
           }
         },
         "template": {

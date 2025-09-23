@@ -22,6 +22,7 @@ var tags = {
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(resourceGroup().id, environmentName, location))
+var shortToken = substring(resourceToken, 0, 6) // Nur 6 Zeichen statt dem ganzen Hash
 
 module containerApps 'core/host/container-apps.bicep' = {
   name: 'container-apps'
@@ -29,19 +30,19 @@ module containerApps 'core/host/container-apps.bicep' = {
     name: 'app'
     location: location
     tags: tags
-    containerAppsEnvironmentName: '${abbrs.appManagedEnvironments}${resourceToken}'
-    containerRegistryName: '${abbrs.containerRegistryRegistries}${resourceToken}'
-    logAnalyticsWorkspaceName: '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+    containerAppsEnvironmentName: 'trustme-env-${shortToken}'
+    containerRegistryName: 'trustmeregistry${shortToken}'
+    logAnalyticsWorkspaceName: 'trustme-logs-${shortToken}'
   }
 }
 
 module backend 'app/backend.bicep' = {
   name: 'backend'
   params: {
-    name: '${abbrs.appContainerApps}backend-${resourceToken}'
+    name: 'trustme-backend-${shortToken}'
     location: location
     tags: tags
-    identityName: '${abbrs.managedIdentityUserAssignedIdentities}backend-${resourceToken}'
+    identityName: 'trustme-backend-identity-${shortToken}'
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
     exists: false
@@ -59,10 +60,10 @@ module backend 'app/backend.bicep' = {
 module frontend 'app/frontend.bicep' = {
   name: 'frontend'
   params: {
-    name: '${abbrs.appContainerApps}frontend-${resourceToken}'
+    name: 'trustme-frontend-${shortToken}'
     location: location
     tags: tags
-    identityName: '${abbrs.managedIdentityUserAssignedIdentities}frontend-${resourceToken}'
+    identityName: 'trustme-frontend-identity-${shortToken}'
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
     exists: false
@@ -73,7 +74,7 @@ module frontend 'app/frontend.bicep' = {
 module mailhog 'app/mailhog.bicep' = {
   name: 'mailhog'
   params: {
-    name: '${abbrs.appContainerApps}mailhog-${resourceToken}'
+    name: 'trustme-mailhog-${shortToken}'
     location: location
     tags: tags
     containerAppsEnvironmentName: containerApps.outputs.environmentName
@@ -84,7 +85,7 @@ module mailhog 'app/mailhog.bicep' = {
 module database 'core/database/postgresql.bicep' = {
   name: 'database'
   params: {
-    name: '${abbrs.dBforPostgreSQLServers}${resourceToken}'
+    name: 'trustme-db-${shortToken}'
     location: location
     tags: tags
     databaseName: 'trustme'
@@ -98,7 +99,7 @@ module database 'core/database/postgresql.bicep' = {
 module keyVault 'core/security/keyvault.bicep' = {
   name: 'keyvault'
   params: {
-    name: '${abbrs.keyVaultVaults}${resourceToken}'
+    name: 'trustme-vault-${shortToken}'
     location: location
     tags: tags
     principalId: principalId
@@ -108,13 +109,13 @@ module keyVault 'core/security/keyvault.bicep' = {
 module frontDoor 'core/security/frontdoor.bicep' = {
   name: 'frontdoor'
   params: {
-    name: '${abbrs.cdnProfiles}${resourceToken}'
+    name: 'trustme-fd-${shortToken}'
     location: 'Global'
     tags: tags
     frontendOriginUrl: frontend.outputs.uri
     backendOriginUrl: backend.outputs.uri
     mailhogOriginUrl: mailhog.outputs.uri
-    customDomainName: 'trustme-${resourceToken}'
+    customDomainName: 'trustme-${shortToken}'
   }
   dependsOn: [
     frontend

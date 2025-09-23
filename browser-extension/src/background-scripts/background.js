@@ -3,9 +3,86 @@
 
 console.log('Background script started.');
 
-import { getPasswordsExtension } from '../../api/api';
-import { decryptData, deriveKeyFromPassword } from '../../utils/crypto';
-import CryptoJS from 'crypto-js';
+// Note: ES6 imports werden später durch chrome.runtime.sendMessage ersetzt
+// import { getPasswordsExtension } from '../../api/api';
+// import { decryptData, deriveKeyFromPassword } from '../../utils/crypto';
+// import CryptoJS from 'crypto-js';
+
+// Crypto-Funktionen direkt implementiert (ohne externe Dependencies)
+function base64ToBytes(base64) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToBase64(bytes) {
+  const binaryString = String.fromCharCode(...bytes);
+  return btoa(binaryString);
+}
+
+// Web Crypto API basierte Entschlüsselung
+async function decryptData(encryptedDataBase64, ivBase64, tagBase64, keyBase64) {
+  try {
+    const encryptedData = base64ToBytes(encryptedDataBase64);
+    const iv = base64ToBytes(ivBase64);
+    const tag = base64ToBytes(tagBase64);
+    const key = base64ToBytes(keyBase64);
+    
+    // Kombiniere encrypted data und tag für AES-GCM
+    const encryptedWithTag = new Uint8Array(encryptedData.length + tag.length);
+    encryptedWithTag.set(encryptedData);
+    encryptedWithTag.set(tag, encryptedData.length);
+    
+    // Importiere den Schlüssel
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      key,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+    
+    // Entschlüssele
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      cryptoKey,
+      encryptedWithTag
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error('Entschlüsselungs-Fehler:', error);
+    throw error;
+  }
+}
+
+// API-Funktionen direkt implementiert
+async function getPasswordsExtension() {
+  const authData = await chrome.storage.local.get(['token']);
+  if (!authData.token) {
+    throw new Error('Nicht authentifiziert');
+  }
+  
+  const response = await fetch('http://localhost:8080/api/passwords', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${authData.token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  return await response.json();
+}
 
 // Example: Listen for messages from other parts of the extension (popup, content scripts)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -94,45 +171,44 @@ async function handleTabUpdate(tab) {
 
     // If authenticated, fetch and process passwords
     const encryptionKeyBase64 = authData.encryption_key;
-    const encryptionKey = CryptoJS.enc.Base64.parse(encryptionKeyBase64);
-
+    
     // Fetch all passwords from the backend
     const response = await getPasswordsExtension();
     const encryptedPasswords = response.data;
 
     // Decrypt and filter relevant passwords for the current URL
-    const relevantPasswords = encryptedPasswords
-      .map(pw => {
-         try {
-          // Ensure data formats match the expected Base64 strings
-          const decryptedUsername = decryptData(pw.encrypted_username, pw.username_iv, pw.username_tag, encryptionKey);
-          const decryptedPassword = decryptData(pw.encrypted_password, pw.password_iv, pw.password_tag, encryptionKey);
-          // Handle potentially null notes field from backend
-          const decryptedNotes = pw.encrypted_notes ? decryptData(pw.encrypted_notes, pw.notes_iv, pw.notes_tag, encryptionKey) : '';
-          
-          return {
-            ...pw, // Keep original id and website_url
-            username: decryptedUsername,
-            password: decryptedPassword,
-            notes: decryptedNotes
-          };
-        } catch (decryptError) {
-          console.error("Error decrypting password in background:", decryptError);
-          return null; // Skip this password if decryption fails
+    const relevantPasswords = [];
+    for (const pw of encryptedPasswords) {
+      try {
+        // Ensure data formats match the expected Base64 strings
+        const decryptedUsername = await decryptData(pw.encrypted_username, pw.username_iv, pw.username_tag, encryptionKeyBase64);
+        const decryptedPassword = await decryptData(pw.encrypted_password, pw.password_iv, pw.password_tag, encryptionKeyBase64);
+        // Handle potentially null notes field from backend
+        const decryptedNotes = pw.encrypted_notes ? await decryptData(pw.encrypted_notes, pw.notes_iv, pw.notes_tag, encryptionKeyBase64) : '';
+        
+        const decryptedPw = {
+          ...pw, // Keep original id and website_url
+          username: decryptedUsername,
+          password: decryptedPassword,
+          notes: decryptedNotes
+        };
+        
+        // Basic URL matching: Check if stored website_url hostname matches current tab hostname
+        try {
+          const storedUrl = new URL(pw.website_url);
+          const currentTabUrl = new URL(tab.url);
+          if (storedUrl.hostname === currentTabUrl.hostname) {
+            relevantPasswords.push(decryptedPw);
+          }
+        } catch (urlError) {
+          console.error("Error parsing URL for matching:", urlError);
+          // Skip this password if URL is invalid
         }
-      })
-      .filter(pw => pw !== null) // Remove null entries from decryption errors
-      .filter(pw => {
-         // Basic URL matching: Check if stored website_url hostname matches current tab hostname
-         try {
-            const storedUrl = new URL(pw.website_url);
-            const currentTabUrl = new URL(tab.url);
-            return storedUrl.hostname === currentTabUrl.hostname;
-         } catch (urlError) {
-            console.error("Error parsing URL for matching:", urlError);
-            return false; // Exclude password if URL is invalid
-         }
-      });
+      } catch (decryptError) {
+        console.error("Error decrypting password in background:", decryptError);
+        // Skip this password if decryption fails
+      }
+    }
 
     console.log('Relevant passwords for URL ', tab.url, ':', relevantPasswords);
 
@@ -160,6 +236,30 @@ async function handleTabUpdate(tab) {
     console.error('Error in handleTabUpdate:', error);
     // Handle errors, e.g., show a notification to the user
     // setError('Fehler beim Laden der Passwörter für Autofill.'); // Cannot directly set UI error from background script
+  }
+}
+
+// Hilfsfunktion: Prüfe ob URL für Passwort-Funktionalität relevant ist
+function isPasswordRelevantUrl(url) {
+  if (!url) return false;
+  
+  try {
+    const urlObj = new URL(url);
+    const protocol = urlObj.protocol;
+    
+    // Nur HTTP/HTTPS URLs sind für Passwörter relevant
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      return false;
+    }
+    
+    // Ignoriere bestimmte URLs
+    const hostname = urlObj.hostname;
+    const ignoredHosts = ['chrome-extension', 'moz-extension', 'edge-extension'];
+    
+    return !ignoredHosts.some(ignored => hostname.includes(ignored));
+  } catch (error) {
+    console.error('Error parsing URL:', error);
+    return false;
   }
 }
 

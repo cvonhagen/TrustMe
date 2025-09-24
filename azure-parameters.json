@@ -8,6 +8,9 @@
     "environment": {
       "value": "prod"
     },
+    "dockerHubUsername": {
+      "value": "trustmepassword"
+    },
     "dbAdminUsername": {
       "value": "trustmeadmin"
     },

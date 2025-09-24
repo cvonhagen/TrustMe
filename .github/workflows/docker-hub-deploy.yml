@@ -1,0 +1,120 @@
+name: Build and Deploy to Docker Hub
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'browser-extension/**'
+      - '.github/workflows/docker-hub-deploy.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'browser-extension/**'
+
+env:
+  DOCKER_HUB_USERNAME: christechstarter  # Docker Hub Username für öffentliche Repos
+  BACKEND_IMAGE: christechstarter/trustme-backend
+  FRONTEND_IMAGE: christechstarter/trustme-frontend
+  BROWSER_EXT_IMAGE: christechstarter/trustme-browser-extension
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🔑 Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ env.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+    - name: 📋 Generate Build Info
+      id: build-info
+      run: |
+        echo "timestamp=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+        echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        echo "version=${GITHUB_REF_NAME}-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+    - name: 🔨 Build Backend Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ env.BACKEND_IMAGE }}:latest
+          ${{ env.BACKEND_IMAGE }}:${{ steps.build-info.outputs.version }}
+          ${{ env.BACKEND_IMAGE }}:${{ steps.build-info.outputs.timestamp }}
+
+    - name: 🔨 Build Frontend Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ env.FRONTEND_IMAGE }}:latest
+          ${{ env.FRONTEND_IMAGE }}:${{ steps.build-info.outputs.version }}
+          ${{ env.FRONTEND_IMAGE }}:${{ steps.build-info.outputs.timestamp }}
+
+    - name: 🔨 Build Browser Extension Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./browser-extension
+        file: ./browser-extension/Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ env.BROWSER_EXT_IMAGE }}:latest
+          ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.version }}
+          ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.timestamp }}
+
+    # Optional: Update Azure Container Apps (falls gewünscht)
+    - name: 🔄 Update Azure Container Apps (Optional)
+      if: github.event_name != 'pull_request' && vars.AZURE_RESOURCE_GROUP != ''
+      run: |
+        # Nur ausführen wenn Azure CLI konfiguriert ist
+        if [ -n "${{ secrets.AZURE_CREDENTIALS }}" ]; then
+          echo "🔑 Azure Login..."
+          echo '${{ secrets.AZURE_CREDENTIALS }}' | az login --service-principal -u ${{ vars.AZURE_CLIENT_ID }} -p stdin --tenant ${{ vars.AZURE_TENANT_ID }}
+          
+          echo "🔄 Backend Container App aktualisieren..."
+          az containerapp update \
+            --name ${{ vars.AZURE_BACKEND_APP_NAME }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.BACKEND_IMAGE }}:latest
+          
+          echo "🔄 Frontend Container App aktualisieren..."
+          az containerapp update \
+            --name ${{ vars.AZURE_FRONTEND_APP_NAME }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.FRONTEND_IMAGE }}:latest
+        else
+          echo "ℹ️  Azure Credentials nicht konfiguriert - überspringe Container App Updates"
+        fi
+
+    - name: 📊 Build Summary
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "## 🎉 Docker Hub Deployment Erfolgreich!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Veröffentlichte Images:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Backend**: \`${{ env.BACKEND_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Frontend**: \`${{ env.FRONTEND_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Browser Extension**: \`${{ env.BROWSER_EXT_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 Docker Hub Links:" >> $GITHUB_STEP_SUMMARY
+        echo "- [Backend Image](https://hub.docker.com/r/${{ env.DOCKER_HUB_USERNAME }}/trustme-backend)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Frontend Image](https://hub.docker.com/r/${{ env.DOCKER_HUB_USERNAME }}/trustme-frontend)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Browser Extension Image](https://hub.docker.com/r/${{ env.DOCKER_HUB_USERNAME }}/trustme-browser-extension)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏷️ Tags:" >> $GITHUB_STEP_SUMMARY
+        echo "- \`latest\` - Aktuelle Version" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ steps.build-info.outputs.version }}\` - Branch + Commit" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ steps.build-info.outputs.timestamp }}\` - Zeitstempel" >> $GITHUB_STEP_SUMMARY

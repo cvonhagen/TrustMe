@@ -39,7 +39,7 @@ bash quick-deploy-azure.sh
 - `.env.production` - Port von 3030 auf 8080 geändert
 - `backend/main.go` - Test-Routen nur in Development
 - `deploy-azure.sh` - Frontend-Build-Args hinzugefügt
-- `azure-deployment.yml` - Konfiguration aktualisiert
+- `azure-portal-deployment.json` - Azure Portal Template
 
 ## 🌐 Azure-URLs nach Deployment
 

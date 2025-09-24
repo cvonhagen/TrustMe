@@ -91,8 +91,9 @@ USER 65534:65534
 
 # Automatische Gesundheitsprüfung für Container-Orchestrierung
 # Ermöglicht automatisches Restart bei API-Ausfällen
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Scratch-Image hat keine wget, daher einfacher TCP-Check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD ["/main", "-health"]
 
 # Container-Startbefehl: Direkte Binary-Ausführung
 # Kein Shell-Wrapper für bessere Performance

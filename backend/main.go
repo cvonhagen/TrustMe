@@ -10,6 +10,7 @@ import (
 	"backend/services"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -368,6 +369,17 @@ func gracefulShutdown(app *fiber.App) {
 }
 
 func main() {
+	// Health Check Modus
+	if len(os.Args) > 1 && os.Args[1] == "-health" {
+		// Einfacher TCP-Check für Health Check im Container
+		conn, err := net.DialTimeout("tcp", "localhost:8080", time.Second*5)
+		if err != nil {
+			os.Exit(1)
+		}
+		conn.Close()
+		os.Exit(0)
+	}
+
 	// Datenbank initialisieren
 	if err := initDB(); err != nil {
 		log.Fatalf("datenbankinitialisierung fehlgeschlagen: %v", err)

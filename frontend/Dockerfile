@@ -55,7 +55,7 @@ EXPOSE 80
 
 # Container-Gesundheitsprüfung für Orchestrierung
 # Prüft ob Nginx reagiert und React-App erreichbar ist
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
 # Non-Root-Ausführung für Container-Security

@@ -1,6 +1,6 @@
 // AuthService - Authentifizierungslogik für TrustMe
 // Verwaltet Benutzerregistrierung, Anmeldung und Account-Löschung
-// Arbeitet mit bcrypt für Passwort-Hashing und JWT für Session-Management
+// Arbeitet mit Argon2id für Passwort-Hashing und JWT für Session-Management
 package services
 
 import (
@@ -11,7 +11,6 @@ import (
 	"backend/schemas"
 	"backend/security"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -29,7 +28,7 @@ func NewAuthService(db *gorm.DB, userService *UserService) *AuthService {
 }
 
 // RegisterUser registriert einen neuen Benutzer mit umfassenden Validierungen
-// Generiert Salt für Frontend-Verschlüsselung und hasht Master-Passwort mit bcrypt
+// Generiert Salt für Frontend-Verschlüsselung und hasht Master-Passwort mit Argon2id
 // Prüft auf doppelte Benutzernamen und E-Mail-Adressen
 func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, error) {
 	// Prüfen, ob der Benutzername bereits existiert
@@ -42,16 +41,16 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, 
 		return nil, errors.New("E-Mail-Adresse ist bereits registriert")
 	}
 
-	// Salt generieren für Frontend-Verschlüsselung (separat von bcrypt)
+	// Salt generieren für Frontend-Verschlüsselung (Standard-Länge)
 	// Dieser Salt wird für die client-seitige Schlüsselableitung verwendet
-	salt, err := security.GenerateSalt(security.PBKDF2SaltLen)
+	salt, err := security.GenerateStandardSalt()
 	if err != nil {
 		return nil, fmt.Errorf("Fehler beim Generieren des Salts: %w", err)
 	}
 
-	// Master-Passwort mit bcrypt hashen (bcrypt generiert eigenen Salt intern)
-	// Separater Hash-Prozess vom Frontend-Salt für zusätzliche Sicherheit
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.MasterPassword), bcrypt.DefaultCost)
+	// Master-Passwort mit Argon2id hashen (moderner Standard)
+	// Verwendet OWASP-konforme Parameter für maximale Sicherheit
+	hashedPassword, err := security.HashPasswordArgon2id(req.MasterPassword, salt)
 	if err != nil {
 		return nil, fmt.Errorf("Fehler beim Hashen des Master-Passworts: %w", err)
 	}
@@ -60,8 +59,9 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, 
 	user := &models.User{
 		Username:             req.Username,
 		Email:                req.Email,
-		HashedMasterPassword: string(hashedPassword),
+		HashedMasterPassword: hashedPassword,
 		Salt:                 salt,  // Dieser Salt ist für das Frontend
+		HashType:             "argon2id", // Moderner Hash-Algorithmus
 		TwoFAEnabled:         false, // 2FA standardmäßig deaktiviert
 		EmailVerified:        false, // E-Mail noch nicht verifiziert
 	}
@@ -75,7 +75,7 @@ func (s *AuthService) RegisterUser(req *schemas.RegisterRequest) (*models.User, 
 }
 
 // LoginUser authentifiziert Benutzer mit umfassenden Sicherheitsprüfungen
-// Validiert E-Mail-Verifizierung, prüft Passwort mit bcrypt und generiert JWT-Token
+// Unterstützt automatische Migration von bcrypt/PBKDF2 zu Argon2id
 // Rückgabe enthält alle für Frontend benötigten Authentifizierungsdaten
 func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginResponse, error) {
 	// Benutzer anhand des Benutzernamens abrufen
@@ -92,10 +92,26 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 		return nil, errors.New("E-Mail-Adresse muss vor der Anmeldung verifiziert werden")
 	}
 
-	// Das bereitgestellte Passwort mit dem bcrypt-Hash vergleichen
-	// bcrypt macht automatisch Salt-Extraktion und Vergleich
-	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedMasterPassword), []byte(req.MasterPassword)); err != nil {
-		return nil, errors.New("Ungültige Anmeldeinformationen") // Passwort stimmt nicht überein
+	// Passwort-Verifikation mit automatischer Migration
+	var isValid bool
+	var isLegacyHash bool
+	
+	// Intelligente Hash-Erkennung und -Verifikation
+	isValid, isLegacyHash, err = security.VerifyPasswordUniversal(req.MasterPassword, user.HashedMasterPassword, user.Salt, user.HashType)
+	if err != nil {
+		return nil, fmt.Errorf("Fehler bei der Passwort-Verifikation: %w", err)
+	}
+	
+	if !isValid {
+		return nil, errors.New("Ungültige Anmeldeinformationen")
+	}
+
+	// Lazy Migration: Legacy-Hashes bei erfolgreichem Login auf Argon2id upgraden
+	if isLegacyHash {
+		if err := s.migrateUserToArgon2id(user, req.MasterPassword); err != nil {
+			// Migration-Fehler blockiert Login nicht, nur loggen
+			fmt.Printf("WARNUNG: Migration zu Argon2id fehlgeschlagen für User %d: %v\n", user.ID, err)
+		}
 	}
 
 	// JWT-Token generieren
@@ -112,6 +128,32 @@ func (s *AuthService) LoginUser(req *schemas.LoginRequest) (*schemas.LoginRespon
 		TwoFAEnabled: user.TwoFAEnabled,
 		Salt:         user.Salt,
 	}, nil
+}
+
+// migrateUserToArgon2id migriert einen User von Legacy-Hash zu Argon2id
+// Wird automatisch beim Login aufgerufen für nahtlose Migration
+func (s *AuthService) migrateUserToArgon2id(user *models.User, plainPassword string) error {
+	// Neuen Argon2id-Hash mit demselben Salt erstellen
+	newHash, err := security.HashPasswordArgon2id(plainPassword, user.Salt)
+	if err != nil {
+		return fmt.Errorf("Fehler beim Erstellen des Argon2id-Hash: %w", err)
+	}
+
+	// User in Datenbank mit neuem Hash und Hash-Type updaten
+	result := s.DB.Model(user).Updates(map[string]interface{}{
+		"hashed_master_password": newHash,
+		"hash_type":              "argon2id",
+	})
+
+	if result.Error != nil {
+		return fmt.Errorf("Fehler beim Speichern der Migration: %w", result.Error)
+	}
+
+	// User-Objekt für weitere Verwendung aktualisieren
+	user.HashedMasterPassword = newHash
+	user.HashType = "argon2id"
+
+	return nil
 }
 
 // ScheduleAccountDeletion markiert einen Account für die Löschung (Soft Delete)

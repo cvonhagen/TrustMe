@@ -1,19 +1,57 @@
 const axios = require('axios');
 const crypto = require('crypto'); // Node.js built-in crypto module
 
+// Installiere argon2 für Node.js: npm install argon2
+// Falls das Script fehlschlägt, führe aus: npm install argon2
+let argon2;
+try {
+    argon2 = require('argon2');
+} catch (error) {
+    console.error('FEHLER: argon2 nicht installiert! Führe aus: npm install argon2');
+    process.exit(1);
+}
+
 const API_BASE_URL = 'http://localhost:8080/api/v1'; // Backend-API für Testdaten-Generierung
 const BASE_TEST_PASSWORD = 'TestPassword123!'; // Base password for all test users
 
 const NUM_USERS = 5; // Anzahl der zu erstellenden Testbenutzer (für 100.000 Datensätze)
 const NUM_PASSWORDS_PER_USER = 10; // Anzahl der Passworteinträge pro Benutzer (für 100.000 Datensätze)
 
-// PBKDF2 parameters - must match backend/frontend (from backend/security/security.go)
+// Kryptographische Parameter - müssen mit Backend/Frontend synchron sein
+// PBKDF2-Parameter (Legacy für Fallback)
 const pbkdf2Iterations = 250000;
 const pbkdf2KeyLen = 32; // 32 bytes for AES-256
-// Salt length is determined by the backend (16 bytes)
 const pbkdf2HashAlgorithm = 'sha256';
 
-// Function to derive key using PBKDF2 (Node.js crypto)
+// Argon2id-Parameter nach OWASP-Standards (Primary)
+const argon2idConfig = {
+    type: argon2.argon2id,    // Argon2id-Variante
+    timeCost: 3,              // OWASP-Empfehlung: time=3
+    memoryCost: 64 * 1024,    // 64 MB Memory
+    parallelism: 4,           // 4 parallele Threads
+    hashLength: 32            // 32 Bytes Output für AES-256
+};
+
+// Argon2id Key-Derivation (Primary) - entspricht Backend-Implementation
+const deriveKeyFromPasswordArgon2id = async (password, saltBuffer) => {
+    try {
+        const hash = await argon2.hash(password, {
+            type: argon2idConfig.type,
+            timeCost: argon2idConfig.timeCost,
+            memoryCost: argon2idConfig.memoryCost,
+            parallelism: argon2idConfig.parallelism,
+            hashLength: argon2idConfig.hashLength,
+            salt: saltBuffer,
+            raw: true // Raw bytes zurückgeben, nicht Base64
+        });
+        return hash; // hash ist ein Buffer
+    } catch (error) {
+        console.error('Fehler bei Argon2id Key-Derivation:', error);
+        throw error;
+    }
+};
+
+// PBKDF2 Key-Derivation (Legacy für Fallback)
 const deriveKeyFromPassword = async (password, saltBuffer) => {
     return new Promise((resolve, reject) => {
         crypto.pbkdf2(
@@ -30,6 +68,23 @@ const deriveKeyFromPassword = async (password, saltBuffer) => {
             }
         );
     });
+};
+
+// Universelle Key-Derivation - bevorzugt Argon2id, Fallback auf PBKDF2
+const deriveKeyFromPasswordUniversal = async (password, saltBuffer, preferredMethod = 'argon2id') => {
+    try {
+        if (preferredMethod === 'argon2id') {
+            console.log('Verwende Argon2id für Key-Derivation...');
+            return await deriveKeyFromPasswordArgon2id(password, saltBuffer);
+        } else {
+            console.log('Verwende PBKDF2 für Key-Derivation...');
+            return await deriveKeyFromPassword(password, saltBuffer);
+        }
+    } catch (error) {
+        console.warn('Fallback von Argon2id zu PBKDF2:', error.message);
+        console.log('Verwende PBKDF2 als Fallback...');
+        return await deriveKeyFromPassword(password, saltBuffer);
+    }
 };
 
 // Function to encrypt data using AES-256 GCM (Node.js crypto)
@@ -57,6 +112,8 @@ const encryptData = (data, keyBuffer) => {
 };
 
 // Main function to generate data
+// WICHTIG: Stelle sicher, dass argon2 installiert ist: npm install argon2
+// Dieses Script erzeugt Testdaten mit der neuen Argon2id-Implementation
 const generateData = async () => {
     const timestamp = Date.now(); // Eindeutiger Zeitstempel
     console.log(`Starting data generation: ${NUM_USERS} users, ${NUM_PASSWORDS_PER_USER} passwords per user (Total: ${NUM_USERS * NUM_PASSWORDS_PER_USER} entries)`);
@@ -95,10 +152,10 @@ const generateData = async () => {
             // Decode the base64 salt to Buffer
             const userSaltBuffer = Buffer.from(userSaltBase64, 'base64');
 
-            // 3. Derive Encryption Key
-            console.log('Deriving encryption key...');
-            const encryptionKey = await deriveKeyFromPassword(password, userSaltBuffer);
-            console.log('Encryption key derived.');
+            // 3. Derive Encryption Key mit Argon2id (Primary)
+            console.log('Deriving encryption key mit Argon2id...');
+            const encryptionKey = await deriveKeyFromPasswordUniversal(password, userSaltBuffer, 'argon2id');
+            console.log('Encryption key derived successfully.');
 
             // 4. Generate and Encrypt Password Entries for this user
             console.log(`Generating and encrypting ${NUM_PASSWORDS_PER_USER} password entries for ${username}...`);

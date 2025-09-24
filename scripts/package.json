@@ -1,0 +1,17 @@
+{
+  "name": "trustme-test-scripts",
+  "version": "1.0.0",
+  "description": "Test-Skripte für TrustMe mit Argon2id-Support",
+  "main": "generate_data.js",
+  "scripts": {
+    "generate": "node generate_data.js",
+    "test": "node --check generate_data.js"
+  },
+  "dependencies": {
+    "argon2": "^0.30.3",
+    "axios": "^1.9.0"
+  },
+  "keywords": ["trustme", "test-data", "argon2id", "password-manager"],
+  "author": "TrustMe Team",
+  "license": "ISC"
+}

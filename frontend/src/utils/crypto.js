@@ -1,13 +1,24 @@
 import CryptoJS from 'crypto-js';
+import { argon2id } from '@noble/hashes/argon2';
+import { pbkdf2 } from '@noble/hashes/pbkdf2';
+import { sha256 } from '@noble/hashes/sha256';
 // import 'crypto-js/lib-typedarrays'; // Könnte für WordArray benötigt werden - Mit Web Crypto API nicht mehr nötig
 // import 'crypto-js/scrypt'; // Korrigierter expliziter Import für Scrypt - Nicht mehr nötig
 // import argon2 from 'argon2-browser'; // Importiere die argon2-browser Bibliothek - Entferne dies
 // import loadArgon2idWasm from 'argon2id'; // Importiere die argon2id Bibliothek - Entferne dies
 
+// Kryptographische Algorithmus-Konfiguration
 const algorithm = 'PBKDF2';
-const iterations = 250000; // Anzahl der Iterationen, sollte mit dem Backend übereinstimmen
+const iterations = 250000; // Anzahl der Iterationen, sollte mit dem Backend übereinstimmen (Legacy)
 const hash = 'SHA-256';  // Hash-Algorithmus
 const length = 256;       // Schlüssellänge in Bits (für AES-256)
+
+// Argon2id-Parameter nach OWASP-Standards (Primary)
+const argon2idConfig = {
+  t: 3,        // OWASP-Empfehlung: time=3 für optimale Sicherheit
+  m: 64 * 1024, // 64 MB Memory: Balance zwischen Sicherheit und Browser-Performance
+  p: 4,        // 4 parallele Threads für moderne Multi-Core-CPUs
+};
 
 // generateSalt erzeugt einen zufälligen Salt und kodiert ihn als Base64-String.
 export const generateSalt = () => {
@@ -15,7 +26,59 @@ export const generateSalt = () => {
   return btoa(String.fromCharCode(...saltBytes)); // Base64-Kodierung
 };
 
-// deriveKeyFromPassword leitet einen kryptografischen Schlüssel aus einem Passwort und Salt ab.
+// deriveKeyFromPasswordArgon2id leitet einen kryptografischen Schlüssel mit Argon2id ab
+// Moderner Standard nach OWASP-Empfehlungen für maximale Sicherheit
+export const deriveKeyFromPasswordArgon2id = async (password, saltBase64) => {
+  const passwordBuffer = new TextEncoder().encode(password);
+  const saltBuffer = Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0));
+
+  // Argon2id-Hash mit OWASP-Parametern
+  const hash = argon2id(passwordBuffer, saltBuffer, {
+    t: 3,        // OWASP time=3
+    m: 64 * 1024, // 64 MB Memory
+    p: 4,        // 4 parallele Threads
+    dkLen: 32    // 32 Bytes Output
+  });
+
+  // Hash als CryptoKey für AES-GCM importieren
+  const derivedKey = await crypto.subtle.importKey(
+    'raw',
+    hash,
+    { name: 'AES-GCM', length: 256 },
+    false, // Nicht extrahierbar
+    ['encrypt', 'decrypt']
+  );
+
+  return derivedKey;
+};
+
+// deriveKeyFromPasswordUniversal wählt automatisch das beste verfügbare Verfahren
+// Bevorzugt Argon2id, fällt zurück auf PBKDF2 bei Fehlern
+// Rückgabe: { key, usedMethod }
+export const deriveKeyFromPasswordUniversal = async (password, saltBase64, preferredMethod = 'argon2id') => {
+  try {
+    if (preferredMethod === 'argon2id') {
+      const key = await deriveKeyFromPasswordArgon2id(password, saltBase64);
+      return { key, usedMethod: 'argon2id' };
+    } else {
+      const key = await deriveKeyFromPassword(password, saltBase64);
+      return { key, usedMethod: 'pbkdf2' };
+    }
+  } catch (error) {
+    // Fallback auf PBKDF2 wenn Argon2id fehlschlägt
+    console.warn('Fallback von Argon2id zu PBKDF2:', error);
+    try {
+      const key = await deriveKeyFromPassword(password, saltBase64);
+      return { key, usedMethod: 'pbkdf2' };
+    } catch (fallbackError) {
+      console.error('Beide Key-Derivation-Verfahren fehlgeschlagen:', fallbackError);
+      throw new Error('Key-Derivation fehlgeschlagen');
+    }
+  }
+};
+
+// deriveKeyFromPassword leitet einen kryptografischen Schlüssel aus einem Passwort und Salt ab (Legacy)
+// DEPRECATED: Nur für Backward-Compatibility - Neue Implementierungen sollten deriveKeyFromPasswordArgon2id verwenden
 // Dies wird für die Verschlüsselung und Entschlüsselung von Daten verwendet.
 export const deriveKeyFromPassword = async (password, saltBase64) => {
   const passwordBuffer = new TextEncoder().encode(password);

@@ -14,6 +14,7 @@ type User struct {
 	EmailTokenExpiry     *time.Time // Ablaufzeit des E-Mail-Verifizierungstokens
 	HashedMasterPassword string     `gorm:"type:text;not null"`   // Gehashtes Master-Passwort des Benutzers
 	Salt                 string     `gorm:"type:text;not null"`   // Salt für das Hashing des Master-Passworts
+	HashType             string     `gorm:"type:varchar(20);default:'argon2id'"` // Hash-Algorithmus: 'argon2id' oder 'pbkdf2' (für Migration)
 	TwoFAEnabled         bool       `gorm:"default:false"`        // Flag, ob die Zwei-Faktor-Authentifizierung aktiviert ist
 	TwoFASecret          string     `gorm:"type:text"`            // Geheimnis für die Zwei-Faktor-Authentifizierung (nullable)
 	// Soft Delete Felder

@@ -3,11 +3,11 @@ package handlers
 import (
 	"backend/models"
 	"backend/schemas"
+	"backend/security"
 	"backend/services"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthHandler handles authentication related requests.
@@ -196,9 +196,9 @@ func (h *AuthHandler) RestoreDeletedAccount(c *fiber.Ctx) error {
 		})
 	}
 
-	// Prüfe Passwort mit bcrypt (wie bei der Registrierung)
-	err := bcrypt.CompareHashAndPassword([]byte(user.HashedMasterPassword), []byte(req.MasterPassword))
-	if err != nil {
+	// Prüfe Passwort mit universeller Verifikation (unterstützt Legacy-Hashes)
+	isValid, _, err := security.VerifyPasswordUniversal(req.MasterPassword, user.HashedMasterPassword, user.Salt, user.HashType)
+	if err != nil || !isValid {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Ungültiges Passwort",
 		})

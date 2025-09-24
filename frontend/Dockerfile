@@ -32,8 +32,8 @@ FROM nginx:alpine AS production
 
 # Sicherheit: Dedicated nginx-User mit minimalen Rechten
 # Vermeidet Root-Ausführung für bessere Container-Security
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+# nginx-Gruppe und User existieren bereits im nginx:alpine Image
+RUN echo "nginx user already exists in nginx:alpine image"
 
 # Vite-Build-Output von Builder-Stage kopieren
 # /dist -> Nginx-Standard-Verzeichnis für statische Dateien
@@ -43,10 +43,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # File-Permissions für nginx-User setzen (Security Best Practice)
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
+# Pfade können im nginx:alpine Image anders sein
+RUN chown -R nginx:nginx /usr/share/nginx/html || true && \
+    chown -R nginx:nginx /var/cache/nginx || true && \
+    chown -R nginx:nginx /var/log/nginx || true && \
+    chown -R nginx:nginx /etc/nginx/conf.d || true
 
 # HTTP-Port für Frontend-Zugriff
 # Standard HTTP-Port
@@ -58,6 +59,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
 # Non-Root-Ausführung für Container-Security
+# nginx User existiert bereits im nginx:alpine Image
 USER nginx
 
 # Nginx im Foreground starten (Docker-konform)

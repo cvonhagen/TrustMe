@@ -78,29 +78,27 @@ jobs:
           ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.version }}
           ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.timestamp }}
 
-    # Optional: Update Azure Container Apps (falls gewünscht)
-    - name: 🔄 Update Azure Container Apps (Optional)
-      if: github.event_name != 'pull_request' && vars.AZURE_RESOURCE_GROUP != ''
+    # Update Azure Container Apps
+    - name: 🔄 Update Azure Container Apps
+      if: github.event_name != 'pull_request'
       run: |
-        # Nur ausführen wenn Azure CLI konfiguriert ist
-        if [ -n "${{ secrets.AZURE_CREDENTIALS }}" ]; then
-          echo "🔑 Azure Login..."
-          echo '${{ secrets.AZURE_CREDENTIALS }}' | az login --service-principal -u ${{ vars.AZURE_CLIENT_ID }} -p stdin --tenant ${{ vars.AZURE_TENANT_ID }}
-          
-          echo "🔄 Backend Container App aktualisieren..."
-          az containerapp update \
-            --name ${{ vars.AZURE_BACKEND_APP_NAME }} \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.BACKEND_IMAGE }}:latest
-          
-          echo "🔄 Frontend Container App aktualisieren..."
-          az containerapp update \
-            --name ${{ vars.AZURE_FRONTEND_APP_NAME }} \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.FRONTEND_IMAGE }}:latest
-        else
-          echo "ℹ️  Azure Credentials nicht konfiguriert - überspringe Container App Updates"
-        fi
+        # Azure Login
+        echo "🔑 Azure Login..."
+        echo '${{ secrets.AZURE_CREDENTIALS }}' | az login --service-principal -u ${{ vars.AZURE_CLIENT_ID }} -p stdin --tenant ${{ vars.AZURE_TENANT_ID }}
+        
+        echo "🔄 Backend Container App aktualisieren..."
+        az containerapp update \
+          --name ${{ vars.AZURE_BACKEND_APP_NAME }} \
+          --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.BACKEND_IMAGE }}:latest
+        
+        echo "🔄 Frontend Container App aktualisieren..."
+        az containerapp update \
+          --name ${{ vars.AZURE_FRONTEND_APP_NAME }} \
+          --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.FRONTEND_IMAGE }}:latest
+        
+        echo "✅ Azure Container Apps erfolgreich aktualisiert!"
 
     - name: 📊 Build Summary
       if: github.event_name != 'pull_request'

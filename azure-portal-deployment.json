@@ -58,8 +58,6 @@
     "dbServerName": "[concat(variables('resourcePrefix'), '-db')]",
     "dbName": "trustme",
     "keyVaultName": "[concat(parameters('appName'), '-kv-', take(uniqueString(resourceGroup().id, 'v2'), 8))]",
-    "communicationServiceName": "[concat(variables('resourcePrefix'), '-acs-', uniqueString(resourceGroup().id))]",
-    "emailServiceName": "[concat(variables('resourcePrefix'), '-email-', uniqueString(resourceGroup().id))]",
     "dockerHubBackendImage": "[concat(parameters('dockerHubUsername'), '/trustme-backend:latest')]",
     "dockerHubFrontendImage": "[concat(parameters('dockerHubUsername'), '/trustme-frontend:latest')]"
   },
@@ -77,39 +75,6 @@
         "tenantId": "[subscription().tenantId]",
         "accessPolicies": [],
         "enableRbacAuthorization": true
-      }
-    },
-    {
-      "type": "Microsoft.Communication/emailServices",
-      "apiVersion": "2023-04-01",
-      "name": "[variables('emailServiceName')]",
-      "location": "global",
-      "properties": {
-        "dataLocation": "Europe"
-      }
-    },
-    {
-      "type": "Microsoft.Communication/emailServices/domains",
-      "apiVersion": "2023-04-01",
-      "name": "[concat(variables('emailServiceName'), '/AzureManagedDomain')]",
-      "location": "global",
-      "dependsOn": [
-        "[resourceId('Microsoft.Communication/emailServices', variables('emailServiceName'))]"
-      ],
-      "properties": {
-        "domainManagement": "AzureManaged"
-      }
-    },
-    {
-      "type": "Microsoft.Communication/communicationServices",
-      "apiVersion": "2023-04-01",
-      "name": "[variables('communicationServiceName')]",
-      "location": "global",
-      "dependsOn": [
-        "[resourceId('Microsoft.Communication/emailServices/domains', variables('emailServiceName'), 'AzureManagedDomain')]"
-      ],
-      "properties": {
-        "dataLocation": "Europe"
       }
     },
     {
@@ -198,8 +163,7 @@
       "location": "[parameters('location')]",
       "dependsOn": [
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
-        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))]",
-        "[resourceId('Microsoft.Communication/communicationServices', variables('communicationServiceName'))]"
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('dbServerName'))]"
       ],
       "properties": {
         "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
@@ -224,10 +188,6 @@
             {
               "name": "jwt-secret",
               "value": "[parameters('jwtSecretKey')]"
-            },
-            {
-              "name": "acs-connection-string",
-              "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', variables('communicationServiceName')), '2023-04-01').primaryConnectionString]"
             }
           ]
         },
@@ -252,10 +212,6 @@
                 {
                   "name": "JWT_SECRET_KEY",
                   "secretRef": "jwt-secret"
-                },
-                {
-                  "name": "AZURE_COMMUNICATION_CONNECTION_STRING",
-                  "secretRef": "acs-connection-string"
                 },
                 {
                   "name": "ALLOWED_ORIGINS",
@@ -373,10 +329,6 @@
     "dockerHubFrontendImage": {
       "type": "string",
       "value": "[variables('dockerHubFrontendImage')]"
-    },
-    "communicationServiceName": {
-      "type": "string",
-      "value": "[variables('communicationServiceName')]"
     }
   }
 }

@@ -14,9 +14,9 @@ WORKDIR /app
 # Package-Manifeste zuerst kopieren (Docker Layer-Caching)
 COPY package*.json ./
 
-# Production-Dependencies installieren (ohne dev-Dependencies)
-# --ci für reproduzierbare Builds, Flags für schnellere Installation
-RUN npm ci --only=production --no-audit --no-fund
+# Alle Dependencies installieren (Production + Development)
+# Vite Build braucht devDependencies wie @vitejs/plugin-react
+RUN npm ci --no-audit --no-fund
 
 # Gesamten Source-Code kopieren (nach Dependencies für besseres Caching)
 COPY . .

@@ -11,6 +11,7 @@ BACKEND_IMAGE="$DOCKER_HUB_USERNAME/trustme-backend"
 FRONTEND_IMAGE="$DOCKER_HUB_USERNAME/trustme-frontend"
 BROWSER_EXT_IMAGE="$DOCKER_HUB_USERNAME/trustme-browser-extension"
 VERSION=${1:-latest}  # Version aus Parameter oder 'latest'
+TENANT_ID="4dfdfd67-3a37-4e2e-b9f0-434c7061ba33"  # Feste Tenant-ID für Azure Sandbox
 
 echo "🔐 TrustMe Docker Hub Deployment"
 echo "================================="
@@ -99,46 +100,14 @@ fi
 echo "✅ Browser Extension Image gepusht"
 
 # Optional: Azure Container Apps aktualisieren
-if command -v az >/dev/null 2>&1; then
-    echo ""
-    echo "🔄 Azure Container Apps aktualisieren? (y/n)"
-    read -r response
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        echo "Azure Resource Group Name eingeben:"
-        read -r RESOURCE_GROUP
-        echo "Backend App Name eingeben (z.B. trustme-prod-backend):"
-        read -r BACKEND_APP_NAME
-        echo "Frontend App Name eingeben (z.B. trustme-prod-frontend):"
-        read -r FRONTEND_APP_NAME
-        
-        echo "🔄 Backend Container App aktualisieren..."
-        if az containerapp update \
-            --name "$BACKEND_APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --image "$BACKEND_IMAGE:$VERSION"; then
-            echo "✅ Backend Container App aktualisiert"
-        else
-            echo "⚠️  Backend Container App Update fehlgeschlagen"
-        fi
-        
-        echo "🔄 Frontend Container App aktualisieren..."
-        if az containerapp update \
-            --name "$FRONTEND_APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --image "$FRONTEND_IMAGE:$VERSION"; then
-            echo "✅ Frontend Container App aktualisiert"
-        else
-            echo "⚠️  Frontend Container App Update fehlgeschlagen"
-        fi
-    fi
-else
-    echo ""
-    echo "ℹ️  Azure CLI nicht installiert - manuelle Container App Updates erforderlich"
-    echo ""
-    echo "📋 Manuelle Update-Kommandos:"
-    echo "az containerapp update --name BACKEND_APP_NAME --resource-group RESOURCE_GROUP --image $BACKEND_IMAGE:$VERSION"
-    echo "az containerapp update --name FRONTEND_APP_NAME --resource-group RESOURCE_GROUP --image $FRONTEND_IMAGE:$VERSION"
-fi
+echo ""
+echo "ℹ️  Azure Container App Updates müssen manuell durchgeführt werden"
+echo ""
+echo "📋 Manuelle Update-Kommandos:"
+echo "az containerapp update --name BACKEND_APP_NAME --resource-group RESOURCE_GROUP --image $BACKEND_IMAGE:$VERSION"
+echo "az containerapp update --name FRONTEND_APP_NAME --resource-group RESOURCE_GROUP --image $FRONTEND_IMAGE:$VERSION"
+echo ""
+echo "💡 Tipp: In der Azure Sandbox-Umgebung müssen Container App Updates über das Azure Portal erfolgen"
 
 echo ""
 echo "🎉 Docker Hub Deployment abgeschlossen!"

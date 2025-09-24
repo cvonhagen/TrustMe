@@ -124,47 +124,15 @@ try {
     exit 1
 }
 
-# Optional: Azure Container Apps aktualisieren
-if (Get-Command az -ErrorAction SilentlyContinue) {
-    Write-Host ""
-    $response = Read-Host "🔄 Azure Container Apps aktualisieren? (y/n)"
-    if ($response -match "^[yY]") {
-        $ResourceGroup = Read-Host "Azure Resource Group Name eingeben"
-        $BackendAppName = Read-Host "Backend App Name eingeben (z.B. trustme-prod-backend)"
-        $FrontendAppName = Read-Host "Frontend App Name eingeben (z.B. trustme-prod-frontend)"
-        
-        Write-Host "🔄 Backend Container App aktualisieren..." -ForegroundColor Blue
-        try {
-            az containerapp update --name $BackendAppName --resource-group $ResourceGroup --image "${BackendImage}:$Version"
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ Backend Container App aktualisiert" -ForegroundColor Green
-            } else {
-                Write-Host "⚠️  Backend Container App Update fehlgeschlagen" -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "⚠️  Backend Container App Update fehlgeschlagen" -ForegroundColor Yellow
-        }
-        
-        Write-Host "🔄 Frontend Container App aktualisieren..." -ForegroundColor Blue
-        try {
-            az containerapp update --name $FrontendAppName --resource-group $ResourceGroup --image "${FrontendImage}:$Version"
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ Frontend Container App aktualisiert" -ForegroundColor Green
-            } else {
-                Write-Host "⚠️  Frontend Container App Update fehlgeschlagen" -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "⚠️  Frontend Container App Update fehlgeschlagen" -ForegroundColor Yellow
-        }
-    }
-} else {
-    Write-Host ""
-    Write-Host "ℹ️  Azure CLI nicht installiert - manuelle Container App Updates erforderlich" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "📋 Manuelle Update-Kommandos:" -ForegroundColor Cyan
-    Write-Host "az containerapp update --name BACKEND_APP_NAME --resource-group RESOURCE_GROUP --image ${BackendImage}:$Version" -ForegroundColor White
-    Write-Host "az containerapp update --name FRONTEND_APP_NAME --resource-group RESOURCE_GROUP --image ${FrontendImage}:$Version" -ForegroundColor White
-}
+# Info: Azure Container Apps Updates
+Write-Host ""
+Write-Host "ℹ️  Azure Container App Updates müssen manuell durchgeführt werden" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "📋 Manuelle Update-Kommandos:" -ForegroundColor Cyan
+Write-Host "az containerapp update --name BACKEND_APP_NAME --resource-group RESOURCE_GROUP --image ${BackendImage}:$Version" -ForegroundColor White
+Write-Host "az containerapp update --name FRONTEND_APP_NAME --resource-group RESOURCE_GROUP --image ${FrontendImage}:$Version" -ForegroundColor White
+Write-Host ""
+Write-Host "💡 Tipp: In der Azure Sandbox-Umgebung müssen Container App Updates über das Azure Portal erfolgen" -ForegroundColor Yellow
 
 Write-Host ""
 Write-Host "🎉 Docker Hub Deployment abgeschlossen!" -ForegroundColor Green

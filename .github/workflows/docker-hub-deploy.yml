@@ -47,6 +47,7 @@ jobs:
       with:
         context: ./backend
         file: ./backend/Dockerfile
+        target: production
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
           ${{ env.BACKEND_IMAGE }}:latest
@@ -58,6 +59,7 @@ jobs:
       with:
         context: ./frontend
         file: ./frontend/Dockerfile
+        target: production
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
           ${{ env.FRONTEND_IMAGE }}:latest
@@ -69,6 +71,7 @@ jobs:
       with:
         context: ./browser-extension
         file: ./browser-extension/Dockerfile
+        target: production
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
           ${{ env.BROWSER_EXT_IMAGE }}:latest

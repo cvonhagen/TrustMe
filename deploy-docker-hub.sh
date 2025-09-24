@@ -42,7 +42,7 @@ fi
 echo ""
 echo "🔨 Backend Docker Image bauen..."
 echo "Building: $BACKEND_IMAGE:$VERSION"
-if ! docker build -t "$BACKEND_IMAGE:$VERSION" ./backend; then
+if ! docker build --target production -t "$BACKEND_IMAGE:$VERSION" ./backend; then
     echo "❌ Backend Build fehlgeschlagen"
     exit 1
 fi
@@ -52,7 +52,7 @@ echo "✅ Backend Image gebaut"
 echo ""
 echo "🔨 Frontend Docker Image bauen..."
 echo "Building: $FRONTEND_IMAGE:$VERSION"
-if ! docker build -t "$FRONTEND_IMAGE:$VERSION" ./frontend; then
+if ! docker build --target production -t "$FRONTEND_IMAGE:$VERSION" ./frontend; then
     echo "❌ Frontend Build fehlgeschlagen"
     exit 1
 fi
@@ -62,7 +62,7 @@ echo "✅ Frontend Image gebaut"
 echo ""
 echo "🔨 Browser Extension Docker Image bauen..."
 echo "Building: $BROWSER_EXT_IMAGE:$VERSION"
-if ! docker build -t "$BROWSER_EXT_IMAGE:$VERSION" ./browser-extension; then
+if ! docker build --target production -t "$BROWSER_EXT_IMAGE:$VERSION" ./browser-extension; then
     echo "❌ Browser Extension Build fehlgeschlagen"
     exit 1
 fi

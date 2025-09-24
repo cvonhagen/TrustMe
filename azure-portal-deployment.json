@@ -57,7 +57,7 @@
     "frontendAppName": "[concat(variables('resourcePrefix'), '-frontend')]",
     "dbServerName": "[concat(variables('resourcePrefix'), '-db')]",
     "dbName": "trustme",
-    "keyVaultName": "[concat(parameters('appName'), '-kv-', take(uniqueString(resourceGroup().id), 8))]",
+    "keyVaultName": "[concat(parameters('appName'), '-kv-', take(uniqueString(resourceGroup().id, 'v2'), 8))]",
     "communicationServiceName": "[concat(variables('resourcePrefix'), '-acs-', uniqueString(resourceGroup().id))]",
     "emailServiceName": "[concat(variables('resourcePrefix'), '-email-', uniqueString(resourceGroup().id))]",
     "dockerHubBackendImage": "[concat(parameters('dockerHubUsername'), '/trustme-backend:latest')]",

@@ -51,7 +51,7 @@ Write-Host ""
 Write-Host "🔨 Backend Docker Image bauen..." -ForegroundColor Blue
 Write-Host "Building: ${BackendImage}:$Version" -ForegroundColor Yellow
 try {
-    docker build -t "${BackendImage}:$Version" ./backend
+    docker build --target production -t "${BackendImage}:$Version" ./backend
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     Write-Host "✅ Backend Image gebaut" -ForegroundColor Green
 } catch {
@@ -64,7 +64,7 @@ Write-Host ""
 Write-Host "🔨 Frontend Docker Image bauen..." -ForegroundColor Blue
 Write-Host "Building: ${FrontendImage}:$Version" -ForegroundColor Yellow
 try {
-    docker build -t "${FrontendImage}:$Version" ./frontend
+    docker build --target production -t "${FrontendImage}:$Version" ./frontend
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     Write-Host "✅ Frontend Image gebaut" -ForegroundColor Green
 } catch {
@@ -77,7 +77,7 @@ Write-Host ""
 Write-Host "🔨 Browser Extension Docker Image bauen..." -ForegroundColor Blue
 Write-Host "Building: ${BrowserExtImage}:$Version" -ForegroundColor Yellow
 try {
-    docker build -t "${BrowserExtImage}:$Version" ./browser-extension
+    docker build --target production -t "${BrowserExtImage}:$Version" ./browser-extension
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     Write-Host "✅ Browser Extension Image gebaut" -ForegroundColor Green
 } catch {

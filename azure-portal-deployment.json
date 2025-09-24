@@ -25,7 +25,7 @@
     },
     "dockerHubUsername": {
       "type": "string",
-      "defaultValue": "trustmepassword",
+      "defaultValue": "christechstarter",
       "metadata": {
         "description": "Docker Hub Username für Image Repository"
       }

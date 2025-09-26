@@ -88,6 +88,4 @@ export const restoreAccount = (credentials) => {
 // validateToken: Prüft, ob der aktuelle Token noch gültig ist
 export const validateToken = () => { return api.get('/auth/validate'); };
 
-
-
-export default api; 
+export default api;

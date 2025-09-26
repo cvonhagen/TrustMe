@@ -70,13 +70,13 @@ func initDB() error {
 
 	// Manuelle Migration für bessere Kontrolle
 	log.Println("Starte Datenbank-Migration...")
-	
+
 	// Prepared Statement Cache deaktivieren für Migration
 	sqlDB, err = DB.DB()
 	if err == nil {
 		// Neue Verbindung ohne Cache für Migration
 		migrationDB, migErr := gorm.Open(postgres.Open(dsn), &gorm.Config{
-			PrepareStmt: false, // Prepared Statements deaktivieren
+			PrepareStmt:                              false, // Prepared Statements deaktivieren
 			DisableForeignKeyConstraintWhenMigrating: true,
 		})
 		if migErr == nil {
@@ -86,7 +86,7 @@ func initDB() error {
 			} else {
 				log.Println("AutoMigrate erfolgreich abgeschlossen")
 			}
-			
+
 			// Prüfe explizit die neuen Spalten
 			var columnExists bool
 			migrationDB.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'deleted_at')").Scan(&columnExists)
@@ -95,14 +95,14 @@ func initDB() error {
 			} else {
 				log.Println("✗ Spalte 'deleted_at' fehlt")
 			}
-			
+
 			migrationDB.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'deletion_scheduled_at')").Scan(&columnExists)
 			if columnExists {
 				log.Println("✓ Spalte 'deletion_scheduled_at' existiert")
 			} else {
 				log.Println("✗ Spalte 'deletion_scheduled_at' fehlt")
 			}
-			
+
 			// Migration-Verbindung schließen
 			migSqlDB, _ := migrationDB.DB()
 			if migSqlDB != nil {
@@ -110,7 +110,7 @@ func initDB() error {
 			}
 		}
 	}
-	
+
 	log.Println("Migration abgeschlossen")
 
 	return nil
@@ -223,7 +223,7 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 	auth.Get("/validate", AuthRequired(), handlers.Auth.ValidateToken)       // Token validieren (geschützt)
 	auth.Post("/logout", AuthRequired(), handlers.Auth.Logout)               // Benutzerabmeldung (geschützt)
 	auth.Delete("/account", AuthRequired(), handlers.Auth.DeleteAccount)     // Account löschen (geschützt)
-	auth.Post("/restore-account", handlers.Auth.RestoreDeletedAccount)      // Account wiederherstellen (öffentlich)
+	auth.Post("/restore-account", handlers.Auth.RestoreDeletedAccount)       // Account wiederherstellen (öffentlich)
 
 	// Passwortverwaltungsrouten (geschützt, erfordert Authentifizierung)
 	passwords := api.Group("/passwords", AuthRequired())
@@ -247,9 +247,9 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 
 	// Benutzerverwaltungsrouten (geschützt)
 	users := api.Group("/users", AuthRequired())
-	users.Get("/profile", handlers.User.GetProfile)          // Benutzerprofil abrufen
-	users.Put("/profile", handlers.User.UpdateProfile)       // Benutzerprofil aktualisieren
-	users.Delete("/account", handlers.User.DeleteAccount)    // Benutzerkonto für Löschung markieren (30 Tage)
+	users.Get("/profile", handlers.User.GetProfile)              // Benutzerprofil abrufen
+	users.Put("/profile", handlers.User.UpdateProfile)           // Benutzerprofil aktualisieren
+	users.Delete("/account", handlers.User.DeleteAccount)        // Benutzerkonto für Löschung markieren (30 Tage)
 	users.Post("/account/restore", handlers.User.RestoreAccount) // Benutzerkonto wiederherstellen
 
 	// TEST-ONLY: Entwicklungs-Routen für Testdaten-Generierung
@@ -293,7 +293,7 @@ func setupRoutes(app *fiber.App, handlers *Handlers) {
 				"username": username,
 			})
 		})
-		
+
 		// Manueller Account-Cleanup (nur für Development)
 		test.Post("/cleanup-accounts", func(c *fiber.Ctx) error {
 			cleanupService := services.NewCleanupService(DB, services.NewUserService(DB))
@@ -316,11 +316,11 @@ type Handlers struct {
 
 // initServices initialisiert alle Anwendungsdienste (Services).
 func initServices() *Handlers {
-	userService := services.NewUserService(DB)                // Benutzerdienst erstellen
-	authService := services.NewAuthService(DB, userService)   // Authentifizierungsdienst erstellen
-	emailService := services.NewEmailService(DB)              // E-Mail-Dienst erstellen
-	passwordService := services.NewPasswordService(DB)        // Passwortdienst erstellen
-	twoFAService := services.NewTwoFAService(DB, userService) // 2FA-Dienst erstellen
+	userService := services.NewUserService(DB)                    // Benutzerdienst erstellen
+	authService := services.NewAuthService(DB, userService)       // Authentifizierungsdienst erstellen
+	emailService := services.NewEmailService(DB)                  // E-Mail-Dienst erstellen
+	passwordService := services.NewPasswordService(DB)            // Passwortdienst erstellen
+	twoFAService := services.NewTwoFAService(DB, userService)     // 2FA-Dienst erstellen
 	cleanupService := services.NewCleanupService(DB, userService) // Cleanup-Dienst erstellen
 
 	// Starte den automatischen Account-Cleanup-Scheduler

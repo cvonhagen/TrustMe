@@ -78,9 +78,11 @@ jobs:
           ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.version }}
           ${{ env.BROWSER_EXT_IMAGE }}:${{ steps.build-info.outputs.timestamp }}
 
-    # Update Azure Container Apps
+    # Update Azure Container Apps (nur wenn Azure-Credentials vorhanden sind)
     - name: 🔄 Update Azure Container Apps
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && env.AZURE_CREDENTIALS != ''
+      env:
+        AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       run: |
         # Azure Login
         echo "🔑 Azure Login..."

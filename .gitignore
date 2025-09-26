@@ -3,3 +3,8 @@ plan B
 .env.azure
 .env.neon
 .env.production
+
+# IDE-spezifische Konfigurationen
+.vscode/
+.cursor/
+.qodo/

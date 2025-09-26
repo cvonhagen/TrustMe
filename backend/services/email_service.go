@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -43,6 +44,8 @@ func (s *EmailService) SendVerificationEmail(user *models.User, token string) er
 	fromEmail := os.Getenv("FROM_EMAIL")
 	baseURL := os.Getenv("BASE_URL")
 
+	log.Printf("E-Mail-Konfiguration: SMTP_HOST=%s, SMTP_PORT=%s, FROM_EMAIL=%s", smtpHost, smtpPortStr, fromEmail)
+
 	// Standardwerte setzen
 	if smtpHost == "" {
 		smtpHost = "localhost"
@@ -62,6 +65,8 @@ func (s *EmailService) SendVerificationEmail(user *models.User, token string) er
 	if err != nil {
 		return fmt.Errorf("Ungültiger SMTP-Port: %w", err)
 	}
+
+	log.Printf("Verwende SMTP-Konfiguration: Host=%s, Port=%d", smtpHost, smtpPort)
 
 	// Verifizierungslink erstellen
 	verificationLink := fmt.Sprintf("%s/verify-email?token=%s", baseURL, token)
@@ -143,7 +148,7 @@ Ihr TrustMe Team
 	if smtpUser != "" && smtpPass != "" {
 		// Mit Authentifizierung (Produktion)
 		d = gomail.NewDialer(smtpHost, smtpPort, smtpUser, smtpPass)
-		
+
 		// TLS/SSL Konfiguration
 		if smtpPort == 465 {
 			// SSL
@@ -158,10 +163,15 @@ Ihr TrustMe Team
 		}
 	}
 
+	log.Printf("Versuche E-Mail an %s zu senden...", user.Email)
+
 	// E-Mail senden mit Timeout
 	if err := d.DialAndSend(m); err != nil {
+		log.Printf("Fehler beim Senden der E-Mail: %v", err)
 		return fmt.Errorf("Fehler beim Senden der E-Mail: %w", err)
 	}
+
+	log.Printf("E-Mail erfolgreich an %s gesendet", user.Email)
 
 	return nil
 }
@@ -198,7 +208,7 @@ func (s *EmailService) VerifyEmail(token string) error {
 
 	// E-Mail als verifiziert markieren und Token löschen
 	result = s.DB.Model(&user).Updates(map[string]interface{}{
-		"email_verified":            true,
+		"email_verified":           true,
 		"email_verification_token": nil,
 		"email_token_expiry":       nil,
 	})

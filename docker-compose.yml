@@ -13,7 +13,7 @@ services:
       target: development             # Development-Target mit Hot-Reload
     container_name: trustme-backend   # Eindeutiger Container-Name
     ports:
-      - "8080:8080"                   # API-Port: Host:Container
+      - "8080:8080"                   # API-Port: Host:Container (zurück zu 8080:8080)
     env_file:
       - .env.neon                     # Umgebungsvariablen für Neon-DB-Verbindung
     volumes:
@@ -40,7 +40,7 @@ services:
     ports:
       - "5173:5173"                  # Vite-Dev-Server Port
     environment:                     # Umgebungsvariablen für Frontend
-      - VITE_BACKEND_URL=http://localhost:8080/api/v1  # Backend-API-Basis-URL
+      - VITE_BACKEND_URL=http://host.docker.internal:8080/api/v1  # Backend-API-Basis-URL (zurück zu Port 8080)
       - VITE_APP_NAME=TrustMe Password Manager         # App-Name für UI
     volumes:
       - ./frontend:/app             # Source-Code für Hot-Reload
@@ -69,8 +69,8 @@ services:
       - ./browser-extension/dist:/app/dist        # Build-Output für Browser
       - ./browser-extension/src:/app/src:ro       # Source-Code (Read-Only)
     environment:                     # URLs für Extension-Kommunikation
-      - BACKEND_URL=http://localhost:8080/api/v1  # API-Endpunkt
-      - FRONTEND_URL=http://localhost:5173        # Frontend für Popup-Links
+      - BACKEND_URL=http://host.docker.internal:8080/api/v1  # API-Endpunkt (zurück zu Port 8080)
+      - FRONTEND_URL=http://host.docker.internal:5173        # Frontend für Popup-Links
     networks:
       - trustme-network              # Zugriff auf andere Services
 
@@ -81,8 +81,8 @@ services:
     image: mailhog/mailhog:latest   # Offizielles MailHog Docker-Image
     container_name: trustme-mailhog
     ports:
-      - "1025:1025"                 # SMTP-Server für ausgehende E-Mails
-      - "8025:8025"                 # Web-UI für E-Mail-Anzeige (http://localhost:8025)
+      - "8025:8025"                 # Web-UI für E-Mail-Anzeige (zurück zu 8025:8025)
+      - "1025:1025"                 # SMTP-Server für ausgehende E-Mails (zurück zu 1025:1025)
     networks:
       - trustme-network              # Verbindung zu Backend für E-Mail-Versand
 

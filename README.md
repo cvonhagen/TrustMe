@@ -23,7 +23,7 @@ TrustMe, dat is son moderner und sicha Passwoatmangaar mit eingebauter Zwei-Fakt
 - Passwoata sicha wegtun durch starke Verschlüsselung. Keina kommt da ran!        <!-- AES-256-GCM client-seitig -->
 - Zwei-Faktoar-Autentifizierung (2FA) für noch mehr Sichaheit bei deinem Konto. Doppelt hält besser!  <!-- TOTP-basiert -->
 - Browser-Erweiterung für schnelles Ausfüllen und zackig an deine Passwoata rankommen.   <!-- Autofill + Popup -->
-- Benutzer registrieren und sicha einloggen. Keina schlüppt unterm Tisch durch.   <!-- JWT + bcrypt -->
+- Benutzer registrieren und sicha einloggen. Keina schlüppt unterm Tisch durch.   <!-- JWT + Argon2id -->
 - Passwoateinträge machen, zeigen, ändern, wegschmeißen. Alles, wat de brauchst. <!-- CRUD-Operationen -->
 
 ## 🛠️ Wat wa benutzt ham (Technologie)
@@ -33,17 +33,19 @@ TrustMe, dat is son moderner und sicha Passwoatmangaar mit eingebauter Zwei-Fakt
 - Go mit Fiber als Web-Framework. Dat rennt wie die Sau!                         <!-- Performance + Typsicherheit -->
 - PostgreSQL Datenbank (Neon.tech). Da kommt dat rein, wat rein muss.           <!-- Serverless Postgres -->
 - GORM als ORM. Damit quasselt die Anwendung mit der Datenbank.                 <!-- Type-safe DB-Operationen -->
-- PBKDF2 mit SHA-256 für sicheres Passwoat-Hashing. Da beißen sich die Hacker die Zähne aus. <!-- 250k Iterationen -->
+- Argon2id mit PBKDF2 als Fallback für sicheres Passwoat-Hashing. Da beißen sich die Hacker die Zähne aus. <!-- OWASP-konform -->
 - AES-256 GCM für die Verschlüsselung von die Passwoatdaten. Richtig dicke Eiche!  <!-- Authenticated encryption -->
 - JWT für dat Einloggen. Dein digitaler Ausweis.                               <!-- HMAC-SHA256 Sessions -->
 
 **Vorn (Frontend):**
-- React mit Material UI für die schönen Knöppe und Bildkes.                  <!-- Moderne UI-Komponenten -->
-- Vite als Werkzeug, dat macht dat schnell.                                     <!-- Lightning-fast HMR -->
-- Web Crypto API und CryptoJS für die Zauberei mit die Schlüssel.              <!-- Browser-native Krypto -->
+- React (v19.1.0) mit Material UI (v7.1.1) für die schönen Knöppe und Bildkes.                  <!-- Moderne UI-Komponenten -->
+- Vite (v6.3.5) als Werkzeug, dat macht dat schnell.                                     <!-- Lightning-fast HMR -->
+- CryptoJS (v4.2.0) für die Zauberei mit die Schlüssel.              <!-- Browser-native Krypto -->
 
 **Browser-Erweiterunk:**
 - Manifest V3. Dat is sonne Art Bauanleitunk für die Erweiterunk.              <!-- Modernste Extension-API -->
+- React (v18.2.0) mit Material UI (v7.1.1) für die UI
+- CryptoJS (v4.2.0) für die client-seitige Verschlüsselung
 
 ## 🏁 Wie de dat ans Laufen krichs (Erste Schritte)
 
@@ -122,32 +124,41 @@ node scripts/generate_data.js
 
 ```
 TrustMe/
-├── backend/               # Go Fiber Backend Code
-│   ├── handlers/          # Wat reinkommt, wird verarbeitet
-│   ├── models/            # Wie die Sachen in die Datenbank passen
-│   ├── security/          # Wat mit Sichaheit zu tun hat (Verschlüsselung, Schlüssel)
-│   ├── services/          # Hier passiert die Hauptsache
-│   ├── main.go            # Hier geht alles los
-│   └── go.mod             # Sagt, welche Go-Sachen dat Projekt brauch
-├── frontend/              # React Frontend Code
-│   ├── public/            # Sachen, die jeder sehen kann
-│   ├── src/               # Der Quellcode von dat Vorn
-│   │   ├── components/    # Kleine Teile, die de immer wieder brauchst
-│   │   ├── pages/         # Die ganzen Bildschirmkes (Einloggen, Registrieren, etc.)
-│   │   ├── services/      # Redet mit dat Hintan
-│   │   └── utils/         # Kleine Helferkes (wie dat die Schlüssel)
-│   ├── index.html         # Die erste Seite
-│   ├── package.json       # Sagt, welche Node.js-Sachen dat Projekt brauch
-│   └── vite.config.js     # Wie dat Vite dat alles zusammenpackt
-├── browser-extension/     # Code für die Erweiterung
-│   ├── public/            # Sachen für die Erweiterung
-│   ├── src/               # Quellcode von die Erweiterung
-│   │   ├── background/    # Läuft im Hintergrund
-│   │   ├── content/       # Schnüffelt auf die Webseiten
-│   │   └── popup/         # Wat aufgeht, wenn de draufklickst
-│   └── manifest.json      # Die Regeln für die Erweiterung
-└── scripts/               # Sonstige Skripte
-    └── generate_data.js   # Macht Testdaten über die Hintertür (API)
+├── backend/                    # Go Fiber Backend Code
+│   ├── handlers/               # HTTP-Handler für API-Endpunkte
+│   ├── models/                 # Datenbankmodelle (User, Password)
+│   ├── schemas/                # Datenvalidierungsschemas
+│   ├── security/               # Sicherheitsfunktionen (Hashing, JWT)
+│   ├── services/               # Business-Logik (Auth, User, Password)
+│   ├── main.go                 # Hauptanwendungsdatei
+│   ├── go.mod                  # Go-Abhängigkeiten
+│   └── Dockerfile              # Backend-Container-Definition
+├── frontend/                   # React Frontend Code
+│   ├── src/                    # Quellcode
+│   │   ├── components/         # Wiederverwendbare UI-Komponenten
+│   │   ├── pages/              # Seitenkomponenten
+│   │   ├── services/           # API-Client
+│   │   ├── utils/              # Hilfsfunktionen
+│   │   ├── App.jsx             # Hauptanwendungskomponente
+│   │   └── main.jsx            # Einstiegspunkt
+│   ├── public/                 # Statische Dateien
+│   ├── package.json            # Frontend-Abhängigkeiten
+│   └── vite.config.js          # Vite-Konfiguration
+├── browser-extension/          # Browser-Erweiterung
+│   ├── src/                    # Quellcode der Erweiterung
+│   │   ├── background-scripts/ # Hintergrundskripte
+│   │   ├── content-scripts/    # Injizierte Skripte
+│   │   ├── services/           # API-Client
+│   │   └── utils/              # Hilfsfunktionen
+│   ├── popup.html              # Popup-UI
+│   ├── popup.js                # Popup-Logik
+│   ├── manifest.json           # Erweiterungs-Manifest
+│   ├── package.json            # Extension-Abhängigkeiten
+│   └── build.js                # Build-Skript
+├── scripts/                    # Hilfsskripte
+│   └── generate_data.js        # Testdatengenerator
+├── docker-compose.yml          # Container-Orchestrierung
+└── README.md                   # Diese Datei
 ```
 
 ## 🐳 Docker Support
@@ -230,24 +241,6 @@ docker-compose logs frontend
 
 # Container neu bauen (Cache leeren)
 docker-compose build --no-cache
-```
-
-### Jetz solltet alles laufen!
-
-- **✅ Backend**: Port 8080 (healthy, mit Air hot-reload)
-- **✅ Frontend**: Port 5173 (mit Vite hot-reload)
-- **✅ MailHog**: Ports 1025/8025 (E-Mail-Testing)
-- **✅ Browser Extension**: Alle API-Calls verwenden Port 8080
-- **✅ Database**: PostgreSQL über Neon.tech
-
-Wennze immernoch Probleme has, dann guck dir mal die Container-Logs an:
-
-```bash
-# Alle Logs live verfolgen
-docker-compose logs -f
-
-# Nur Backend-Logs
-docker-compose logs -f backend
 ```
 
 ## 🗺️ Wat noch kommt (Zukünftige Erweiterungen)

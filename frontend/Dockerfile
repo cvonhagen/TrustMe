@@ -33,7 +33,8 @@ FROM nginx:alpine AS production
 # Sicherheit: Dedicated nginx-User mit minimalen Rechten
 # Vermeidet Root-Ausführung für bessere Container-Security
 # nginx-Gruppe und User existieren bereits im nginx:alpine Image
-RUN echo "nginx user already exists in nginx:alpine image"
+RUN addgroup -g 1001 -S nginx && \
+    adduser -S nginx -u 1001 -G nginx
 
 # Vite-Build-Output von Builder-Stage kopieren
 # /dist -> Nginx-Standard-Verzeichnis für statische Dateien
@@ -44,10 +45,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # File-Permissions für nginx-User setzen (Security Best Practice)
 # Pfade können im nginx:alpine Image anders sein
-RUN chown -R nginx:nginx /usr/share/nginx/html || true && \
-    chown -R nginx:nginx /var/cache/nginx || true && \
-    chown -R nginx:nginx /var/log/nginx || true && \
-    chown -R nginx:nginx /etc/nginx/conf.d || true
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
 
 # HTTP-Port für Frontend-Zugriff
 # Standard HTTP-Port
